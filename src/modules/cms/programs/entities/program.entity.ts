@@ -30,17 +30,10 @@ export class Program {
   @Column({ type: 'varchar', length: 100 })
   category: string;
 
-  @Column({
-    type: 'enum',
-    enum: ProgramType,
-  })
+  @Column({ type: 'varchar', length: 50 })
   type: ProgramType;
 
-  @Column({
-    type: 'enum',
-    enum: ProgramLanguage,
-    default: ProgramLanguage.ARABIC,
-  })
+  @Column({ type: 'varchar', length: 10, default: ProgramLanguage.ARABIC })
   language: ProgramLanguage;
 
   @Column({ type: 'integer' })
