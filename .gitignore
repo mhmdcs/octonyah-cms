@@ -1,9 +1,11 @@
-# Cursor
-.cursor
-
 # compiled output
 /dist
 /node_modules
+
+# database
+*.db
+*.sqlite
+*.sqlite3
 
 # Logs
 logs
@@ -46,3 +48,5 @@ lerna-debug.log*
 *.tmp
 *.temp
 
+# Cursor
+.cursor
