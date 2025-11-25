@@ -26,6 +26,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 import { ProgramsService } from './programs.service';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { UpdateProgramDto } from './dto/update-program.dto';
@@ -34,6 +35,7 @@ import { UpdateProgramDto } from './dto/update-program.dto';
  * Controller class for program HTTP endpoints.
  * All routes are prefixed with 'cms/programs'.
  */
+@ApiTags('CMS Programs')
 @Controller('cms/programs')
 export class ProgramsController {
   /**
@@ -53,6 +55,10 @@ export class ProgramsController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a new program' })
+  @ApiBody({ type: CreateProgramDto })
+  @ApiResponse({ status: 201, description: 'Program successfully created' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
   create(@Body() createProgramDto: CreateProgramDto) {
     return this.programsService.create(createProgramDto);
   }
@@ -66,6 +72,8 @@ export class ProgramsController {
    * @returns Array of all programs, ordered by publication date (newest first)
    */
   @Get()
+  @ApiOperation({ summary: 'Get all programs' })
+  @ApiResponse({ status: 200, description: 'List of all programs' })
   findAll() {
     return this.programsService.findAll();
   }
@@ -80,6 +88,10 @@ export class ProgramsController {
    * @returns The program entity
    */
   @Get(':id')
+  @ApiOperation({ summary: 'Get a program by ID' })
+  @ApiParam({ name: 'id', description: 'Program UUID' })
+  @ApiResponse({ status: 200, description: 'Program found' })
+  @ApiResponse({ status: 404, description: 'Program not found' })
   findOne(@Param('id') id: string) {
     return this.programsService.findOne(id);
   }
@@ -97,6 +109,12 @@ export class ProgramsController {
    * @returns The updated program
    */
   @Patch(':id')
+  @ApiOperation({ summary: 'Update a program' })
+  @ApiParam({ name: 'id', description: 'Program UUID' })
+  @ApiBody({ type: UpdateProgramDto })
+  @ApiResponse({ status: 200, description: 'Program successfully updated' })
+  @ApiResponse({ status: 404, description: 'Program not found' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
   update(@Param('id') id: string, @Body() updateProgramDto: UpdateProgramDto) {
     return this.programsService.update(id, updateProgramDto);
   }
@@ -111,6 +129,10 @@ export class ProgramsController {
    */
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a program' })
+  @ApiParam({ name: 'id', description: 'Program UUID' })
+  @ApiResponse({ status: 204, description: 'Program successfully deleted' })
+  @ApiResponse({ status: 404, description: 'Program not found' })
   remove(@Param('id') id: string) {
     return this.programsService.remove(id);
   }

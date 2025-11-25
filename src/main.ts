@@ -14,6 +14,7 @@
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 /**
@@ -22,7 +23,8 @@ import { AppModule } from './app.module';
  * This function:
  * 1. Creates the NestJS application from AppModule
  * 2. Configures global validation pipe to automatically validate all incoming requests
- * 3. Starts the HTTP server on port 3000 (or PORT from environment)
+ * 3. Sets up Swagger UI for API documentation and testing
+ * 4. Starts the HTTP server on port 3000 (or PORT from environment)
  */
 async function bootstrap() {
   // Create NestJS application instance from the root module
@@ -38,10 +40,25 @@ async function bootstrap() {
     }),
   );
 
+  // Configure Swagger/OpenAPI documentation
+  // This creates an interactive API documentation UI at /api
+  const config = new DocumentBuilder()
+    .setTitle('Thmanyah CMS API')
+    .setDescription('Content Management System API for managing video podcasts and documentaries')
+    .setVersion('1.0')
+    .addTag('Root', 'Root endpoint for testing')
+    .addTag('CMS Programs', 'Program management endpoints')
+    .build();
+  
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
+
   // Start the HTTP server
   // Uses PORT from environment variables, or defaults to 3000
-  await app.listen(process.env.PORT ?? 3000);
-  console.log(`Application is running on: http://localhost:${process.env.PORT ?? 3000}`);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  console.log(`Application is running on: http://localhost:${port}`);
+  console.log(`Swagger UI is available at: http://localhost:${port}/api`);
 }
 
 // Execute the bootstrap function to start the application

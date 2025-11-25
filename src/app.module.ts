@@ -17,6 +17,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { CmsModule } from './modules/cms/cms.module';
+import { AppController } from './app.controller';
 import { Program } from './modules/cms/programs/entities/program.entity';
 
 /**
@@ -41,7 +42,7 @@ import { Program } from './modules/cms/programs/entities/program.entity';
     // Import CMS module which contains all CMS-related features
     CmsModule,
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [],
 })
 export class AppModule {}
