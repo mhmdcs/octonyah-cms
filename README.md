@@ -70,7 +70,7 @@ A two-component system built with NestJS and TypeScript for managing and discove
 
 1. **Clone the repository** (or navigate to the project directory):
    ```bash
-   cd octonyah-nestjs
+   cd octonyah-cms
    ```
 
 2. **Install dependencies**:
