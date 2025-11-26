@@ -44,10 +44,11 @@ async function bootstrap() {
   // This creates an interactive API documentation UI at /api
   const config = new DocumentBuilder()
     .setTitle('Octonyah CMS API')
-    .setDescription('Content Management System API for managing video podcasts and documentaries')
+    .setDescription('Content Management System API for managing video podcasts and documentaries. Includes CMS endpoints for content management and Discovery endpoints for public search and exploration.')
     .setVersion('1.0')
     .addTag('Root', 'Root endpoint for testing')
-    .addTag('CMS Programs', 'Program management endpoints')
+    .addTag('CMS Programs', 'Program management endpoints (internal)')
+    .addTag('Discovery', 'Public search and exploration endpoints')
     .build();
   
   const document = SwaggerModule.createDocument(app, config);

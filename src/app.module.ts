@@ -17,6 +17,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { CmsModule } from './modules/cms/cms.module';
+import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { AppController } from './app.controller';
 import { Program } from './modules/cms/programs/entities/program.entity';
 
@@ -41,6 +42,8 @@ import { Program } from './modules/cms/programs/entities/program.entity';
     }),
     // Import CMS module which contains all CMS-related features
     CmsModule,
+    // Import Discovery module for public search and exploration
+    DiscoveryModule,
   ],
   controllers: [AppController],
   providers: [],
