@@ -32,10 +32,10 @@ import { Program } from './modules/cms/programs/entities/program.entity';
   imports: [
     // Global configuration module - makes .env variables available app-wide
     ConfigModule.forRoot({ isGlobal: true }),
-    // Database configuration - SQLite database file named 'thmanyah.db'
+    // Database configuration - SQLite database file named 'octonyah.db'
     TypeOrmModule.forRoot({
       type: 'sqlite',
-      database: 'thmanyah.db',
+      database: 'octonyah.db',
       entities: [Program], // Register all entities here
       synchronize: true, // Only for development - auto-creates/updates schema
     }),

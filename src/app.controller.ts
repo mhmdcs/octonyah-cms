@@ -34,16 +34,17 @@ export class AppController {
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Hello World! Welcome to Thmanyah CMS API' },
+        message: { type: 'string', example: 'Hello World! Welcome to Octonyah CMS API' },
         status: { type: 'string', example: 'ok' },
       },
     },
   })
   getHello() {
     return {
-      message: 'Hello World! Welcome to Thmanyah CMS API',
+      message: 'Hello World! Welcome to Octonyah CMS API',
       status: 'ok',
     };
   }
 }
+
 

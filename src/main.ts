@@ -43,7 +43,7 @@ async function bootstrap() {
   // Configure Swagger/OpenAPI documentation
   // This creates an interactive API documentation UI at /api
   const config = new DocumentBuilder()
-    .setTitle('Thmanyah CMS API')
+    .setTitle('Octonyah CMS API')
     .setDescription('Content Management System API for managing video podcasts and documentaries')
     .setVersion('1.0')
     .addTag('Root', 'Root endpoint for testing')
