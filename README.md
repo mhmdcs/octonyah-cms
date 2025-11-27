@@ -40,6 +40,7 @@ A two-component system built with NestJS and TypeScript for managing and discove
 - ✅ Browse programs by category or type
 - ✅ Public API endpoints for exploration
 - ✅ Redis-backed cache with automatic invalidation via RabbitMQ events
+- ✅ Elasticsearch secondary index powering fast full-text search, filters, and sort options
 
 ## Service Layout
 
@@ -56,6 +57,7 @@ Supporting infrastructure (local/dev via Docker Compose):
 - `postgres` – canonical system of record for programs
 - `rabbitmq` – async event bus between services
 - `redis` – cache backing the discovery service
+- `elasticsearch` – search/read model optimized for full-text queries, filtering, autocomplete
 
 ## Inter-service Communication
 
@@ -63,6 +65,7 @@ Supporting infrastructure (local/dev via Docker Compose):
 - **Asynchronous messaging**: CMS publishes RabbitMQ events (`program.created`, `program.updated`, `program.deleted`) whenever content changes. Discovery subscribes to the same queue using NestJS’s RMQ transport, enabling cache invalidation, search-index refreshes, analytics fan-out, etc.
 - **Shared contracts**: Event names and payload contracts live in `libs/shared-programs`, ensuring publishers and consumers stay aligned without tight coupling.
 - **Caching + invalidation**: Discovery caches read-heavy endpoints (individual program fetch + search queries) in Redis with a configurable TTL. CMS emits events, and the discovery service invalidates affected cache keys immediately (program-specific keys + all search-result caches), keeping cached data fresh without synchronous coordination.
+- **Elasticsearch read model**: Discovery maintains a secondary search index that is updated asynchronously from CMS events, allowing fast full-text search, filtering, and sorting without hammering Postgres.
 - **Future-ready**: Additional consumers (Redis cache warmers, BullMQ queues, Elasticsearch updaters) can subscribe to the same events without modifying the core services.
 
 ## Tech Stack
@@ -76,6 +79,9 @@ Supporting infrastructure (local/dev via Docker Compose):
 
 ### Caching
 - **Redis** (via ioredis) - Distributed cache for read-heavy discovery endpoints with TTL and invalidation
+
+### Search & Read Models
+- **Elasticsearch** (8.x) - Secondary index optimized for full-text search, filters, and high-concurrency read/query workloads
 
 ### Database & ORM
 - **PostgreSQL** (tested with v16) - Reliable relational database, easy to run locally via Docker
@@ -141,6 +147,9 @@ The application uses environment variables for configuration. Edit the `.env` fi
 - `RABBITMQ_PREFETCH` - Prefetch count for consumers (default: `1`)
 - `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` - Redis connection settings (host defaults to `localhost`)
 - `REDIS_TTL_SECONDS` - TTL for cached items (default: `300`)
+- `ELASTICSEARCH_NODE` - Elasticsearch node URL (default: `http://localhost:9200`)
+- `ELASTICSEARCH_USERNAME` / `ELASTICSEARCH_PASSWORD` - Optional basic auth credentials
+- `ELASTICSEARCH_INDEX` - Index name for programs (default: `programs`)
 - `NODE_ENV` - Environment mode (development/production)
 
 ## Running the Application
@@ -261,6 +270,14 @@ Swagger UI provides:
 - `GET /discovery/categories/:category` - Get programs by category
 - `GET /discovery/types/:type` - Get programs by type
 
+##### Search query parameters (`GET /discovery/search`)
+- `q` – Free-text query (title, description, tags) with fuzzy matching
+- `category`, `type`, `language` – Exact-match filters
+- `tags` – Repeatable query param for multi-tag filtering (`?tags=tech&tags=history`)
+- `startDate` / `endDate` – Filter by publication date range (ISO strings)
+- `sort` – `relevance` (default), `date` (newest first), or `popular`
+- `page` / `limit` – Pagination controls (limit capped at 100)
+
 ### Example API Calls
 
 **Create a program:**
@@ -280,7 +297,7 @@ curl -X POST http://localhost:3000/cms/programs \
 
 **Search programs (discovery service):**
 ```bash
-curl "http://localhost:3001/discovery/search?q=technology&category=Technology&page=1&limit=20"
+curl "http://localhost:3001/discovery/search?q=technology&tags=innovation&tags=startup&sort=date&limit=10"
 ```
 
 ## Architecture

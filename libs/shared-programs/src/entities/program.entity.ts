@@ -90,6 +90,19 @@ export class Program {
   language: ProgramLanguage;
 
   /**
+   * Optional list of tags/keywords for search and filtering.
+   */
+  @Column({ type: 'simple-array', nullable: true })
+  tags?: string[];
+
+  /**
+   * Popularity score used for ranking (e.g., views, likes, etc.).
+   * Defaults to 0; can be updated asynchronously.
+   */
+  @Column({ type: 'integer', default: 0 })
+  popularityScore: number;
+
+  /**
    * Duration of the program in seconds.
    * Required integer field representing the total length of the content.
    */

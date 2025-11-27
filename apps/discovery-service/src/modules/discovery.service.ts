@@ -26,6 +26,7 @@ import {
   SEARCH_CACHE_PREFIX,
   buildProgramCacheKey,
 } from '../cache/cache.constants';
+import { ProgramSearchService } from '../search/program-search.service';
 
 @Injectable()
 export class DiscoveryService {
@@ -33,6 +34,7 @@ export class DiscoveryService {
     @InjectRepository(Program)
     private readonly programRepository: Repository<Program>,
     private readonly cache: RedisCacheService,
+    private readonly programSearch: ProgramSearchService,
   ) {}
 
   /**
@@ -49,62 +51,49 @@ export class DiscoveryService {
    * @returns Search results with programs and pagination metadata
    */
   async searchPrograms(searchDto: SearchProgramsDto): Promise<SearchResponseDto> {
-    const { q, category, type, language, page = 1, limit = 20 } = searchDto;
-    const cacheKey = this.buildSearchCacheKey({ q, category, type, language, page, limit });
+    const {
+      q,
+      category,
+      type,
+      language,
+      tags,
+      page = 1,
+      limit = 20,
+      sort,
+      startDate,
+      endDate,
+    } = searchDto;
+
+    const cacheKey = this.buildSearchCacheKey({
+      q,
+      category,
+      type,
+      language,
+      tags,
+      page,
+      limit,
+      sort,
+      startDate,
+      endDate,
+    });
+
     const cached = await this.cache.get<SearchResponseDto>(cacheKey);
     if (cached) {
       return cached;
     }
 
-    // Build query with text search support
-    const queryBuilder = this.programRepository.createQueryBuilder('program');
-
-    // Apply text search (searches in both title and description)
-    if (q) {
-      queryBuilder.where(
-        '(program.title LIKE :search OR program.description LIKE :search)',
-        { search: `%${q}%` },
-      );
-    }
-
-    // Apply filters
-    if (category) {
-      queryBuilder.andWhere('program.category = :category', { category });
-    }
-    if (type) {
-      queryBuilder.andWhere('program.type = :type', { type });
-    }
-    if (language) {
-      queryBuilder.andWhere('program.language = :language', { language });
-    }
-
-    // Order by publication date (newest first)
-    queryBuilder.orderBy('program.publicationDate', 'DESC');
-
-    // Get total count for pagination
-    const total = await queryBuilder.getCount();
-
-    // Apply pagination
-    const skip = (page - 1) * limit;
-    queryBuilder.skip(skip).take(limit);
-
-    // Execute query
-    const programs = await queryBuilder.getMany();
-
-    // Calculate pagination metadata
-    const totalPages = Math.ceil(total / limit);
-    const hasNext = page < totalPages;
-    const hasPrev = page > 1;
-
-    const response: SearchResponseDto = {
-      data: programs,
-      total,
+    const response = await this.programSearch.search({
+      q,
+      category,
+      type,
+      language,
+      tags,
       page,
       limit,
-      totalPages,
-      hasNext,
-      hasPrev,
-    };
+      sort,
+      startDate,
+      endDate,
+    });
 
     await this.cache.set(cacheKey, response);
     return response;
@@ -179,14 +168,23 @@ export class DiscoveryService {
     category?: string;
     type?: string;
     language?: string;
+    tags?: string[];
+    sort?: string;
+    startDate?: string;
+    endDate?: string;
     page: number;
     limit: number;
   }) {
+    const sortedTags = params.tags ? [...params.tags].sort() : [];
     const normalized = {
       q: params.q?.trim() ?? '',
       category: params.category?.trim() ?? '',
       type: params.type ?? '',
       language: params.language ?? '',
+      tags: sortedTags.join(','),
+      sort: params.sort ?? '',
+      startDate: params.startDate ?? '',
+      endDate: params.endDate ?? '',
       page: params.page,
       limit: params.limit,
     };

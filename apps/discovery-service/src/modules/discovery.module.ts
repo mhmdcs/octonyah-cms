@@ -22,6 +22,7 @@ import { DiscoveryController } from './discovery.controller';
 import { ProgramEventsListener } from './program-events.listener';
 import { Program } from '@octonyah/shared-programs';
 import { RedisCacheModule } from '../cache/redis-cache.module';
+import { SearchModule } from '../search/search.module';
 
 /**
  * Discovery Module Configuration
@@ -31,7 +32,7 @@ import { RedisCacheModule } from '../cache/redis-cache.module';
  * - providers: Registers DiscoveryService for dependency injection
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Program]), RedisCacheModule],
+  imports: [TypeOrmModule.forFeature([Program]), RedisCacheModule, SearchModule],
   controllers: [DiscoveryController, ProgramEventsListener],
   providers: [DiscoveryService],
 })

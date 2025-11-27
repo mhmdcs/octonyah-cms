@@ -9,8 +9,18 @@
  * by text only, filter by specific criteria, or combine multiple filters.
  */
 
-import { IsOptional, IsString, IsEnum, IsInt, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsInt,
+  Min,
+  Max,
+  IsArray,
+  IsIn,
+  IsDateString,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ProgramType, ProgramLanguage } from '@octonyah/shared-programs';
 
@@ -70,6 +80,26 @@ export class SearchProgramsDto {
   language?: ProgramLanguage;
 
   /**
+   * Filter by tags/keywords.
+   */
+  @ApiPropertyOptional({
+    description: 'Filter by tags. Provide multiple tags by repeating the query param.',
+    example: ['technology', 'documentary'],
+    type: [String],
+  })
+  @IsOptional()
+  @Transform(({ value }) =>
+    Array.isArray(value)
+      ? value
+      : value
+      ? [value]
+      : undefined,
+  )
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  /**
    * Page number for pagination (1-based).
    * Defaults to 1 if not provided.
    */
@@ -102,5 +132,39 @@ export class SearchProgramsDto {
   @Min(1)
   @Max(100)
   limit?: number = 20;
+
+  /**
+   * Sort order for the results.
+   */
+  @ApiPropertyOptional({
+    description: 'Sort order: relevance, date (newest first), or popular.',
+    enum: ['relevance', 'date', 'popular'],
+    default: 'relevance',
+  })
+  @IsOptional()
+  @IsIn(['relevance', 'date', 'popular'])
+  sort?: 'relevance' | 'date' | 'popular';
+
+  /**
+   * Only return programs published on or after this date (ISO string).
+   */
+  @ApiPropertyOptional({
+    description: 'Filter by publication date (start). ISO string.',
+    example: '2024-01-01',
+  })
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  /**
+   * Only return programs published on or before this date (ISO string).
+   */
+  @ApiPropertyOptional({
+    description: 'Filter by publication date (end). ISO string.',
+    example: '2024-12-31',
+  })
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
 }
 

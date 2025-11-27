@@ -109,6 +109,8 @@ describe('ProgramsService', () => {
         language: ProgramLanguage.ARABIC,
         duration: 3600,
         publicationDate: '2024-01-01',
+        tags: ['tech', 'podcast'],
+        popularityScore: 5,
       };
 
       // Expected program entity after creation (with generated fields)
@@ -158,6 +160,8 @@ describe('ProgramsService', () => {
         type: ProgramType.VIDEO_PODCAST,
         language: ProgramLanguage.ARABIC,
         duration: 3600,
+        tags: ['tech'],
+        popularityScore: 10,
         publicationDate: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),

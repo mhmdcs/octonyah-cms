@@ -20,6 +20,7 @@ import {
   IsDateString,
   IsOptional,
   Min,
+  IsArray,
 } from 'class-validator';
 import { ProgramType, ProgramLanguage } from '@octonyah/shared-programs';
 
@@ -83,5 +84,21 @@ export class CreateProgramDto {
    */
   @IsDateString()
   publicationDate: string;
+
+  /**
+   * Optional tags/keywords used for search filtering.
+   */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  /**
+   * Optional popularity score (defaults to 0 if omitted).
+   */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  popularityScore?: number;
 }
 

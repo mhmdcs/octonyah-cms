@@ -50,6 +50,8 @@ export class ProgramEventsPublisher {
   private sanitizeProgram(program: Partial<Program>) {
     return {
       ...program,
+      tags: program.tags ?? [],
+      popularityScore: program.popularityScore ?? 0,
       publicationDate: this.toIso(program.publicationDate),
       createdAt: this.toIso(program.createdAt),
       updatedAt: this.toIso(program.updatedAt),

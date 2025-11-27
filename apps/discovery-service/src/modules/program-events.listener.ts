@@ -15,12 +15,16 @@ import {
   SEARCH_CACHE_PREFIX,
   buildProgramCacheKey,
 } from '../cache/cache.constants';
+import { ProgramSearchService } from '../search/program-search.service';
 
 @Controller()
 export class ProgramEventsListener {
   private readonly logger = new Logger(ProgramEventsListener.name);
 
-  constructor(private readonly cache: RedisCacheService) {}
+  constructor(
+    private readonly cache: RedisCacheService,
+    private readonly programSearch: ProgramSearchService,
+  ) {}
 
   @EventPattern(ProgramEventPattern.ProgramCreated)
   async handleProgramCreated(
@@ -30,6 +34,7 @@ export class ProgramEventsListener {
     this.logger.log(
       `Program created event received: ${data.program.id}`,
     );
+    await this.indexProgram(data.program);
     await this.invalidateCache(data.program?.id);
     this.ack(context);
   }
@@ -42,6 +47,7 @@ export class ProgramEventsListener {
     this.logger.log(
       `Program updated event received: ${data.program.id}`,
     );
+    await this.indexProgram(data.program);
     await this.invalidateCache(data.program?.id);
     this.ack(context);
   }
@@ -54,6 +60,7 @@ export class ProgramEventsListener {
     this.logger.log(
       `Program deleted event received: ${data.program.id}`,
     );
+    await this.programSearch.removeProgram(data.program?.id);
     await this.invalidateCache(data.program?.id);
     this.ack(context);
   }
@@ -63,6 +70,13 @@ export class ProgramEventsListener {
       await this.cache.delete(buildProgramCacheKey(programId));
     }
     await this.cache.deleteByPrefix(SEARCH_CACHE_PREFIX);
+  }
+
+  private async indexProgram(program?: Partial<Program>) {
+    if (!program?.id) {
+      return;
+    }
+    await this.programSearch.indexProgram(program);
   }
 
   private ack(context: RmqContext) {

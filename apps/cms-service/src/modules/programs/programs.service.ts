@@ -59,6 +59,8 @@ export class ProgramsService {
       // Default to Arabic if language not specified
       language: createProgramDto.language || ProgramLanguage.ARABIC,
       duration: createProgramDto.duration,
+      tags: this.normalizeTags(createProgramDto.tags),
+      popularityScore: createProgramDto.popularityScore ?? 0,
       // Convert date string to Date object
       publicationDate: new Date(createProgramDto.publicationDate),
     });
@@ -122,6 +124,12 @@ export class ProgramsService {
     if (updateProgramDto.type !== undefined) updateData.type = updateProgramDto.type;
     if (updateProgramDto.language !== undefined) updateData.language = updateProgramDto.language;
     if (updateProgramDto.duration !== undefined) updateData.duration = updateProgramDto.duration;
+    if (updateProgramDto.tags !== undefined) {
+      updateData.tags = this.normalizeTags(updateProgramDto.tags);
+    }
+    if (updateProgramDto.popularityScore !== undefined) {
+      updateData.popularityScore = updateProgramDto.popularityScore;
+    }
     if (updateProgramDto.publicationDate !== undefined) {
       // Convert date string to Date object if provided
       updateData.publicationDate = new Date(updateProgramDto.publicationDate);
@@ -149,6 +157,15 @@ export class ProgramsService {
     // Remove from database
     await this.programRepository.remove(program);
     this.programEventsPublisher.programDeleted({ id });
+  }
+
+  private normalizeTags(tags?: string[]): string[] {
+    if (!tags) {
+      return [];
+    }
+    return tags
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
   }
 }
 
