@@ -1,10 +1,6 @@
 import { Controller, Logger } from '@nestjs/common';
-import {
-  Ctx,
-  EventPattern,
-  Payload,
-  RmqContext,
-} from '@nestjs/microservices';
+import { Channel, Message } from 'amqplib';
+import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import {
   ProgramEventPattern,
   ProgramEventMessage,
@@ -15,7 +11,7 @@ import {
   SEARCH_CACHE_PREFIX,
   buildProgramCacheKey,
 } from '../cache/cache.constants';
-import { ProgramSearchService } from '../search/program-search.service';
+import { ProgramIndexQueueService } from '../jobs/program-index.queue.service';
 
 @Controller()
 export class ProgramEventsListener {
@@ -23,7 +19,7 @@ export class ProgramEventsListener {
 
   constructor(
     private readonly cache: RedisCacheService,
-    private readonly programSearch: ProgramSearchService,
+    private readonly programIndexQueue: ProgramIndexQueueService,
   ) {}
 
   @EventPattern(ProgramEventPattern.ProgramCreated)
@@ -31,10 +27,8 @@ export class ProgramEventsListener {
     @Payload() data: ProgramEventMessage<Partial<Program>>,
     @Ctx() context: RmqContext,
   ) {
-    this.logger.log(
-      `Program created event received: ${data.program.id}`,
-    );
-    await this.indexProgram(data.program);
+    this.logger.log(`Program created event received: ${data.program.id}`);
+    await this.enqueueIndex(data.program);
     await this.invalidateCache(data.program?.id);
     this.ack(context);
   }
@@ -44,10 +38,8 @@ export class ProgramEventsListener {
     @Payload() data: ProgramEventMessage<Partial<Program>>,
     @Ctx() context: RmqContext,
   ) {
-    this.logger.log(
-      `Program updated event received: ${data.program.id}`,
-    );
-    await this.indexProgram(data.program);
+    this.logger.log(`Program updated event received: ${data.program.id}`);
+    await this.enqueueIndex(data.program);
     await this.invalidateCache(data.program?.id);
     this.ack(context);
   }
@@ -57,10 +49,8 @@ export class ProgramEventsListener {
     @Payload() data: ProgramEventMessage<Partial<Program>>,
     @Ctx() context: RmqContext,
   ) {
-    this.logger.log(
-      `Program deleted event received: ${data.program.id}`,
-    );
-    await this.programSearch.removeProgram(data.program?.id);
+    this.logger.log(`Program deleted event received: ${data.program.id}`);
+    await this.programIndexQueue.enqueueRemoval(data.program?.id);
     await this.invalidateCache(data.program?.id);
     this.ack(context);
   }
@@ -72,17 +62,32 @@ export class ProgramEventsListener {
     await this.cache.deleteByPrefix(SEARCH_CACHE_PREFIX);
   }
 
-  private async indexProgram(program?: Partial<Program>) {
-    if (!program?.id) {
-      return;
-    }
-    await this.programSearch.indexProgram(program);
+  private async enqueueIndex(program?: Partial<Program>) {
+    await this.programIndexQueue.enqueueProgram(program?.id);
   }
 
   private ack(context: RmqContext) {
-    const channel = context.getChannelRef();
-    const originalMsg = context.getMessage();
-    channel.ack(originalMsg);
+    /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+    const channelRef: unknown = context.getChannelRef();
+    const originalMsg: unknown = context.getMessage();
+
+    if (this.isAmqpChannel(channelRef) && this.isAmqpMessage(originalMsg)) {
+      const confirmedChannel: Channel = channelRef;
+      const confirmedMessage: Message = originalMsg;
+      confirmedChannel.ack(confirmedMessage);
+    }
+    /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+  }
+
+  private isAmqpChannel(channel: unknown): channel is Channel {
+    if (!channel || typeof channel !== 'object') {
+      return false;
+    }
+    const candidate = channel as { ack?: unknown };
+    return typeof candidate.ack === 'function';
+  }
+
+  private isAmqpMessage(message: unknown): message is Message {
+    return typeof message === 'object' && message !== null;
   }
 }
-

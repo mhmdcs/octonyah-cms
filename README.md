@@ -41,6 +41,7 @@ A two-component system built with NestJS and TypeScript for managing and discove
 - ✅ Public API endpoints for exploration
 - ✅ Redis-backed cache with automatic invalidation via RabbitMQ events
 - ✅ Elasticsearch secondary index powering fast full-text search, filters, and sort options
+- ✅ BullMQ-powered background workers that rebuild Elasticsearch asynchronously
 
 ## Service Layout
 
@@ -56,8 +57,9 @@ Supporting infrastructure (local/dev via Docker Compose):
 
 - `postgres` – canonical system of record for programs
 - `rabbitmq` – async event bus between services
-- `redis` – cache backing the discovery service
+- `redis` – cache backing the discovery service and transport for BullMQ queues
 - `elasticsearch` – search/read model optimized for full-text queries, filtering, autocomplete
+- `bullmq workers` – discovery-service background processors that rebuild the search index
 
 ## Inter-service Communication
 
@@ -65,8 +67,8 @@ Supporting infrastructure (local/dev via Docker Compose):
 - **Asynchronous messaging**: CMS publishes RabbitMQ events (`program.created`, `program.updated`, `program.deleted`) whenever content changes. Discovery subscribes to the same queue using NestJS’s RMQ transport, enabling cache invalidation, search-index refreshes, analytics fan-out, etc.
 - **Shared contracts**: Event names and payload contracts live in `libs/shared-programs`, ensuring publishers and consumers stay aligned without tight coupling.
 - **Caching + invalidation**: Discovery caches read-heavy endpoints (individual program fetch + search queries) in Redis with a configurable TTL. CMS emits events, and the discovery service invalidates affected cache keys immediately (program-specific keys + all search-result caches), keeping cached data fresh without synchronous coordination.
-- **Elasticsearch read model**: Discovery maintains a secondary search index that is updated asynchronously from CMS events, allowing fast full-text search, filtering, and sorting without hammering Postgres.
-- **Future-ready**: Additional consumers (Redis cache warmers, BullMQ queues, Elasticsearch updaters) can subscribe to the same events without modifying the core services.
+- **Elasticsearch read model**: Discovery maintains a secondary search index that is updated asynchronously from CMS events and BullMQ worker jobs, allowing fast full-text search, filtering, and sorting without hammering Postgres.
+- **Future-ready**: Additional consumers (Redis cache warmers, BullMQ queues, analytics services) can subscribe to the same events without modifying the core services.
 
 ## Tech Stack
 
@@ -77,8 +79,9 @@ Supporting infrastructure (local/dev via Docker Compose):
 ### Messaging & Communication
 - **RabbitMQ** (via NestJS microservices) - Asynchronous event bus for cross-service communication
 
-### Caching
+### Caching & Background Jobs
 - **Redis** (via ioredis) - Distributed cache for read-heavy discovery endpoints with TTL and invalidation
+- **BullMQ** (@nestjs/bullmq + bullmq) - Redis-backed queues that power Elasticsearch reindex jobs
 
 ### Search & Read Models
 - **Elasticsearch** (8.x) - Secondary index optimized for full-text search, filters, and high-concurrency read/query workloads
@@ -215,6 +218,7 @@ Exposed endpoints:
 - Discovery service → http://localhost:3001 (Swagger at `/api`)
 - RabbitMQ → AMQP `localhost:5672`, management UI `http://localhost:15672` (guest/guest)
 - Redis → `localhost:6379`
+- BullMQ workers → run inside discovery-service container, exposed via logs/queues
 - Postgres → `localhost:5432` (credentials defined in `docker-compose.yml`)
 
 ### Other Commands
@@ -269,6 +273,7 @@ Swagger UI provides:
 - `GET /discovery/programs/:id` - Get a program by ID (public)
 - `GET /discovery/categories/:category` - Get programs by category
 - `GET /discovery/types/:type` - Get programs by type
+- `POST /discovery/search/reindex` - Enqueue a BullMQ job to rebuild the Elasticsearch index (internal use)
 
 ##### Search query parameters (`GET /discovery/search`)
 - `q` – Free-text query (title, description, tags) with fuzzy matching
@@ -417,14 +422,14 @@ The application now follows a **microservices architecture** layered on top of N
 - TTL ensures stale data eventually expires even if an event is missed
 - CMS-driven events purge stale keys immediately (program-level + all search keys)
 
-### 6. TypeORM Query Builder for Search
-**Decision**: Use TypeORM Query Builder instead of raw SQL for search functionality.
+### 6. Elasticsearch as the Read Model
+**Decision**: Move Discovery search to Elasticsearch while PostgreSQL remains the write model.
 
 **Reasoning**:
-- Type-safe queries
-- Database-agnostic (can switch databases easily)
-- Built-in protection against SQL injection
-- Easy to maintain and extend
+- Search-as-you-type analyzers, full-text relevance, and aggregations are native features
+- PostgreSQL stays optimized for canonical writes, relations, and transactions
+- RabbitMQ + BullMQ keep indices eventually consistent without synchronous coupling
+- Discovery can scale independently for high read traffic
 
 ### 7. DTOs for Validation
 **Decision**: Use class-validator decorators in DTOs.
@@ -444,6 +449,15 @@ The application now follows a **microservices architecture** layered on top of N
 - Easy for frontend developers to integrate
 - Reduces need for separate API documentation
 
+### 9. BullMQ Background Jobs
+**Decision**: Use BullMQ (Redis-backed) workers inside the discovery service to rebuild and heal the Elasticsearch index.
+
+**Reasoning**:
+- Queue provides retryable, observable jobs for large reindex operations
+- Decouples RabbitMQ event handling from heavy index writes
+- Operators can trigger reindexing via HTTP without locking the main request cycle
+- Reuses Redis infrastructure already required for caching
+
 ## Challenges Faced
 
 ### 1. PostgreSQL Environment Parity
@@ -453,22 +467,22 @@ The application now follows a **microservices architecture** layered on top of N
 
 **Impact**: Developers can spin up the API against any PostgreSQL instance without changing code, and production can disable schema synchronization while development keeps the fast feedback loop.
 
-### 2. Text Search Implementation
-**Challenge**: Implementing efficient text search across title and description fields.
+### 2. Search Index Synchronization
+**Challenge**: Keeping Elasticsearch synchronized with PostgreSQL when CMS writes happen continuously.
 
-**Solution**: Used TypeORM Query Builder with LIKE operators. For production at scale, this would be replaced with a full-text search engine (Elasticsearch/OpenSearch), but for the project scope, SQL LIKE queries are sufficient.
+**Solution**: Combined RabbitMQ events, Redis cache invalidation, and BullMQ workers that replay canonical data from PostgreSQL into Elasticsearch. Workers can retry failures and operators can manually enqueue a full reindex.
 
-**Note**: For 10M users/hour, a dedicated search engine would be necessary.
+**Impact**: Search remains eventually consistent without overloading CMS or blocking HTTP requests.
 
 ### 3. Pagination Metadata
-**Challenge**: Calculating pagination metadata efficiently.
+**Challenge**: Preserving the existing pagination contract once Discovery moved to Elasticsearch.
 
-**Solution**: Used TypeORM's `getCount()` and `skip()/take()` methods. The query builder allows efficient counting and pagination in a single transaction.
+**Solution**: Wrapped Elasticsearch responses and relied on `hits.total` metadata to compute the legacy pagination fields (total, pages, etc.), so clients did not need to change.
 
 ### 4. Module Coupling
-**Challenge**: Discovery module needs access to Program entity without coupling to CMS.
+**Challenge**: Discovery needs the `Program` entity and DTOs without introducing tight coupling to CMS internals.
 
-**Solution**: Both modules import the Program entity directly from TypeORM. They share the entity but have separate services and controllers, maintaining low coupling.
+**Solution**: Shared library (`libs/shared-programs`) exports entities/events that both services import via path aliases. Each service still has its own modules, auth, and data access layers.
 
 ## Future Improvements
 

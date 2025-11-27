@@ -1,15 +1,15 @@
 /**
  * Discovery Controller
- * 
+ *
  * This file defines the public-facing HTTP endpoints for the Discovery System.
  * These endpoints allow general users to search and explore programs stored in the CMS.
- * 
+ *
  * This controller provides public API endpoints:
  * - GET /discovery/search      - Search programs with filters and pagination
  * - GET /discovery/programs/:id - Get a specific program by ID
  * - GET /discovery/categories/:category - Get programs by category
  * - GET /discovery/types/:type - Get programs by type
- * 
+ *
  * All endpoints are public (no authentication required) and designed for
  * frontend integration. They include Swagger documentation for easy testing.
  */
@@ -21,6 +21,7 @@ import {
   Param,
   HttpStatus,
   HttpException,
+  Post,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -33,6 +34,7 @@ import { DiscoveryService } from './discovery.service';
 import { SearchProgramsDto } from './dto/search-programs.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
 import { Program } from '@octonyah/shared-programs';
+import { ProgramIndexQueueService } from '../jobs/program-index.queue.service';
 
 /**
  * Controller class for discovery/public HTTP endpoints.
@@ -44,14 +46,17 @@ export class DiscoveryController {
   /**
    * Constructor injects DiscoveryService to handle business logic.
    */
-  constructor(private readonly discoveryService: DiscoveryService) {}
+  constructor(
+    private readonly discoveryService: DiscoveryService,
+    private readonly programIndexQueue: ProgramIndexQueueService,
+  ) {}
 
   /**
    * GET /discovery/search
-   * 
+   *
    * Searches and filters programs based on query parameters.
    * Supports text search, filtering by category/type/language, and pagination.
-   * 
+   *
    * @param searchDto - Search criteria and pagination parameters (from query string)
    * @returns Search results with programs and pagination metadata
    */
@@ -66,15 +71,17 @@ export class DiscoveryController {
     description: 'Search results with programs and pagination metadata',
     type: SearchResponseDto,
   })
-  async search(@Query() searchDto: SearchProgramsDto): Promise<SearchResponseDto> {
+  async search(
+    @Query() searchDto: SearchProgramsDto,
+  ): Promise<SearchResponseDto> {
     return this.discoveryService.searchPrograms(searchDto);
   }
 
   /**
    * GET /discovery/programs/:id
-   * 
+   *
    * Retrieves a specific program by its ID for public viewing.
-   * 
+   *
    * @param id - UUID of the program to retrieve
    * @returns The program entity
    */
@@ -94,19 +101,18 @@ export class DiscoveryController {
     try {
       return await this.discoveryService.getProgram(id);
     } catch (error) {
-      throw new HttpException(
-        error.message || 'Program not found',
-        HttpStatus.NOT_FOUND,
-      );
+      const message =
+        error instanceof Error ? error.message : 'Program not found';
+      throw new HttpException(message, HttpStatus.NOT_FOUND);
     }
   }
 
   /**
    * GET /discovery/categories/:category
-   * 
+   *
    * Gets all programs in a specific category.
    * Results are paginated and ordered by publication date (newest first).
-   * 
+   *
    * @param category - Category name to filter by
    * @param page - Page number (default: 1)
    * @param limit - Results per page (default: 20)
@@ -117,7 +123,11 @@ export class DiscoveryController {
     summary: 'Get programs by category',
     description: 'Retrieve all programs in a specific category with pagination',
   })
-  @ApiParam({ name: 'category', description: 'Category name', example: 'Technology' })
+  @ApiParam({
+    name: 'category',
+    description: 'Category name',
+    example: 'Technology',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiResponse({
@@ -135,10 +145,10 @@ export class DiscoveryController {
 
   /**
    * GET /discovery/types/:type
-   * 
+   *
    * Gets all programs of a specific type (video_podcast or documentary).
    * Results are paginated and ordered by publication date (newest first).
-   * 
+   *
    * @param type - Program type to filter by
    * @param page - Page number (default: 1)
    * @param limit - Results per page (default: 20)
@@ -170,5 +180,22 @@ export class DiscoveryController {
   ): Promise<SearchResponseDto> {
     return this.discoveryService.getProgramsByType(type, page, limit);
   }
-}
 
+  /**
+   * POST /discovery/search/reindex
+   *
+   * Enqueues a background job to rebuild the entire search index.
+   * Intended for internal/operator use.
+   */
+  @Post('search/reindex')
+  @ApiOperation({
+    summary: 'Enqueue a full search index rebuild',
+    description:
+      'Triggers a BullMQ job that reads canonical data from Postgres and reindexes Elasticsearch.',
+  })
+  @ApiResponse({ status: 202, description: 'Reindex job enqueued' })
+  async enqueueReindex() {
+    await this.programIndexQueue.enqueueFullReindex();
+    return { status: 'scheduled' };
+  }
+}

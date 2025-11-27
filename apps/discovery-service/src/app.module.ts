@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Program } from '@octonyah/shared-programs';
 import { AppController } from './app.controller';
 import { DiscoveryModule } from './modules/discovery.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -22,10 +23,19 @@ import { DiscoveryModule } from './modules/discovery.module';
         synchronize: config.get<string>('NODE_ENV') !== 'production',
       }),
     }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get<string>('REDIS_HOST', 'localhost'),
+          port: parseInt(config.get<string>('REDIS_PORT', '6379'), 10),
+          password: config.get<string>('REDIS_PASSWORD') || undefined,
+        },
+      }),
+    }),
     DiscoveryModule,
   ],
   controllers: [AppController],
 })
 export class AppModule {}
-
-

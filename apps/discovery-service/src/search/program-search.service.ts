@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import {
@@ -35,11 +31,13 @@ export class ProgramSearchService implements OnModuleInit {
 
   private async ensureIndex() {
     try {
-      const exists = await this.esService.indices.exists({
+      const existsResponse = await this.esService.indices.exists({
         index: this.indexName,
       });
       const indexExists =
-        typeof exists === 'boolean' ? exists : (exists as any).body;
+        typeof existsResponse === 'boolean'
+          ? existsResponse
+          : (existsResponse as { body: boolean }).body;
 
       if (!indexExists) {
         await this.esService.indices.create({
@@ -70,7 +68,18 @@ export class ProgramSearchService implements OnModuleInit {
   }
 
   async search(dto: SearchProgramsDto): Promise<SearchResponseDto> {
-    const { q, category, type, language, tags, page = 1, limit = 20, sort, startDate, endDate } = dto;
+    const {
+      q,
+      category,
+      type,
+      language,
+      tags,
+      page = 1,
+      limit = 20,
+      sort,
+      startDate,
+      endDate,
+    } = dto;
 
     const from = (page - 1) * limit;
 
@@ -121,7 +130,7 @@ export class ProgramSearchService implements OnModuleInit {
       const total: number =
         typeof response.hits.total === 'number'
           ? response.hits.total
-          : response.hits.total?.value ?? 0;
+          : (response.hits.total?.value ?? 0);
 
       const data = response.hits.hits
         .map((hit) => this.toProgram(hit._source))
@@ -166,10 +175,7 @@ export class ProgramSearchService implements OnModuleInit {
       });
       await this.esService.indices.refresh({ index: this.indexName });
     } catch (error) {
-      this.logger.error(
-        `Failed to index program ${program.id}`,
-        error,
-      );
+      this.logger.error(`Failed to index program ${program.id}`, error);
     }
   }
 
@@ -181,7 +187,9 @@ export class ProgramSearchService implements OnModuleInit {
         id,
       });
     } catch (error) {
-      if (error.meta?.statusCode === 404) {
+      const statusCode = (error as { meta?: { statusCode?: number } })?.meta
+        ?.statusCode;
+      if (statusCode === 404) {
         return;
       }
       this.logger.error(`Failed to remove program ${id}`, error);
@@ -194,9 +202,8 @@ export class ProgramSearchService implements OnModuleInit {
       title: program.title ?? '',
       description: program.description,
       category: program.category ?? '',
-      type: (program.type ?? ProgramType.VIDEO_PODCAST) as ProgramType,
-      language: (program.language ??
-        ProgramLanguage.ARABIC) as ProgramLanguage,
+      type: program.type ?? ProgramType.VIDEO_PODCAST,
+      language: program.language ?? ProgramLanguage.ARABIC,
       tags: program.tags ?? [],
       duration: program.duration ?? 0,
       popularityScore: program.popularityScore ?? 0,
@@ -245,4 +252,3 @@ export class ProgramSearchService implements OnModuleInit {
     return undefined; // relevance by score
   }
 }
-
