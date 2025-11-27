@@ -14,7 +14,8 @@
       "sourceRoot": "apps/cms-service/src",
       "entryFile": "main",
       "compilerOptions": {
-        "tsConfigPath": "apps/cms-service/tsconfig.app.json"
+        "tsConfigPath": "apps/cms-service/tsconfig.app.json",
+        "webpack": false
       }
     },
     "discovery-service": {
@@ -23,7 +24,8 @@
       "sourceRoot": "apps/discovery-service/src",
       "entryFile": "main",
       "compilerOptions": {
-        "tsConfigPath": "apps/discovery-service/tsconfig.app.json"
+        "tsConfigPath": "apps/discovery-service/tsconfig.app.json",
+        "webpack": false
       }
     },
     "shared-programs": {
