@@ -20,9 +20,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ProgramsService } from './programs.service';
 import { Program, ProgramType, ProgramLanguage } from '@octonyah/shared-programs';
 import { NotFoundException } from '@nestjs/common';
+import { ProgramsService } from './programs.service';
+import { ProgramEventsPublisher } from './program-events.publisher';
 
 /**
  * Test suite for ProgramsService
@@ -58,6 +59,14 @@ describe('ProgramsService', () => {
           // Provide a mock repository instead of real TypeORM repository
           provide: getRepositoryToken(Program),
           useValue: mockRepository,
+        },
+        {
+          provide: ProgramEventsPublisher,
+          useValue: {
+            programCreated: jest.fn(),
+            programUpdated: jest.fn(),
+            programDeleted: jest.fn(),
+          },
         },
       ],
     }).compile();

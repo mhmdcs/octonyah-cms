@@ -21,6 +21,7 @@ import { Repository } from 'typeorm';
 import { Program, ProgramLanguage } from '@octonyah/shared-programs';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { UpdateProgramDto } from './dto/update-program.dto';
+import { ProgramEventsPublisher } from './program-events.publisher';
 
 /**
  * Service class for program management operations.
@@ -35,6 +36,7 @@ export class ProgramsService {
   constructor(
     @InjectRepository(Program)
     private readonly programRepository: Repository<Program>,
+    private readonly programEventsPublisher: ProgramEventsPublisher,
   ) {}
 
   /**
@@ -61,7 +63,9 @@ export class ProgramsService {
       publicationDate: new Date(createProgramDto.publicationDate),
     });
     // Save to database and return the saved entity (with generated ID)
-    return await this.programRepository.save(program);
+    const saved = await this.programRepository.save(program);
+    this.programEventsPublisher.programCreated(saved);
+    return saved;
   }
 
   /**
@@ -126,7 +130,9 @@ export class ProgramsService {
     // Apply updates to the existing program entity
     Object.assign(program, updateData);
     // Save changes to database
-    return await this.programRepository.save(program);
+    const updated = await this.programRepository.save(program);
+    this.programEventsPublisher.programUpdated(updated);
+    return updated;
   }
 
   /**
@@ -142,6 +148,7 @@ export class ProgramsService {
     const program = await this.findOne(id);
     // Remove from database
     await this.programRepository.remove(program);
+    this.programEventsPublisher.programDeleted({ id });
   }
 }
 

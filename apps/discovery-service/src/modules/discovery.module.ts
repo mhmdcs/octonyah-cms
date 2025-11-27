@@ -19,6 +19,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DiscoveryService } from './discovery.service';
 import { DiscoveryController } from './discovery.controller';
+import { ProgramEventsListener } from './program-events.listener';
 import { Program } from '@octonyah/shared-programs';
 
 /**
@@ -30,7 +31,7 @@ import { Program } from '@octonyah/shared-programs';
  */
 @Module({
   imports: [TypeOrmModule.forFeature([Program])],
-  controllers: [DiscoveryController],
+  controllers: [DiscoveryController, ProgramEventsListener],
   providers: [DiscoveryService],
 })
 export class DiscoveryModule {}

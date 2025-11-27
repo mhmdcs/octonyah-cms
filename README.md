@@ -49,11 +49,21 @@ This repository follows a NestJS monorepo layout with two microservices and one 
 
 Each service has its own entry point (`main.ts`), module tree, Swagger document, and can be deployed/scaled independently. Shared code is imported through path aliases (`@octonyah/shared-programs`) to keep the services decoupled while avoiding duplication.
 
+## Inter-service Communication
+
+- **Synchronous HTTP**: Any future synchronous calls between services (if needed) can continue to use REST since each service already exposes its own HTTP API.
+- **Asynchronous messaging**: CMS publishes RabbitMQ events (`program.created`, `program.updated`, `program.deleted`) whenever content changes. Discovery subscribes to the same queue using NestJS’s RMQ transport, enabling cache invalidation, search-index refreshes, analytics fan-out, etc.
+- **Shared contracts**: Event names and payload contracts live in `libs/shared-programs`, ensuring publishers and consumers stay aligned without tight coupling.
+- **Future-ready**: Additional consumers (Redis cache warmers, BullMQ queues, Elasticsearch updaters) can subscribe to the same events without modifying the core services.
+
 ## Tech Stack
 
 ### Core Framework
 - **NestJS** (v11.0.1) - Progressive Node.js framework for building efficient server-side applications
 - **TypeScript** (v5.7.3) - Type-safe JavaScript for better developer experience
+
+### Messaging & Communication
+- **RabbitMQ** (via NestJS microservices) - Asynchronous event bus for cross-service communication
 
 ### Database & ORM
 - **PostgreSQL** (tested with v16) - Reliable relational database, easy to run locally via Docker
@@ -114,6 +124,9 @@ The application uses environment variables for configuration. Edit the `.env` fi
 - `DB_HOST` / `DB_PORT` - PostgreSQL host and port
 - `DB_USERNAME` / `DB_PASSWORD` - PostgreSQL credentials
 - `DB_DATABASE` - PostgreSQL database name (default: octonyah)
+- `RABBITMQ_URL` - Connection string for RabbitMQ (e.g., `amqp://guest:guest@localhost:5672`)
+- `RABBITMQ_QUEUE` - Queue name for program events (default: `program-events`)
+- `RABBITMQ_PREFETCH` - Prefetch count for consumers (default: `1`)
 - `NODE_ENV` - Environment mode (development/production)
 
 ## Running the Application
@@ -164,6 +177,21 @@ Default endpoint: `http://localhost:${DISCOVERY_PORT}` (3001 by default).
    npm run start:prod           # CMS service
    npm run start:discovery:prod # Discovery service
    ```
+
+### Docker Compose (All services + Postgres)
+
+Run the entire stack (Postgres + both microservices) with a single command:
+
+```bash
+docker compose up --build
+```
+
+Exposed endpoints:
+
+- CMS service → http://localhost:3000 (Swagger at `/api`)
+- Discovery service → http://localhost:3001 (Swagger at `/api`)
+- RabbitMQ → AMQP `localhost:5672`, management UI `http://localhost:15672` (guest/guest)
+- Postgres → `localhost:5432` (credentials defined in `docker-compose.yml`)
 
 ### Other Commands
 
@@ -328,7 +356,16 @@ The application now follows a **microservices architecture** layered on top of N
 - **Scalability**: Each service can be replicated or containerized on its own schedule
 - **Future-proofing**: Easier to insert message queues/API gateway later
 
-### 4. TypeORM Query Builder for Search
+### 4. RabbitMQ Event Bus
+**Decision**: Use RabbitMQ (via NestJS microservices) for asynchronous communication between services.
+
+**Reasoning**:
+- Decouples CMS writes from discovery read-side concerns (cache, index, analytics)
+- Offers durable delivery and retry semantics out of the box
+- Aligns with future plans (Redis/BullMQ/Elasticsearch) by letting them subscribe to the same events
+- Keeps HTTP surface stable for synchronous needs while offloading heavy work to async jobs
+
+### 5. TypeORM Query Builder for Search
 **Decision**: Use TypeORM Query Builder instead of raw SQL for search functionality.
 
 **Reasoning**:
@@ -337,7 +374,7 @@ The application now follows a **microservices architecture** layered on top of N
 - Built-in protection against SQL injection
 - Easy to maintain and extend
 
-### 5. DTOs for Validation
+### 6. DTOs for Validation
 **Decision**: Use class-validator decorators in DTOs.
 
 **Reasoning**:
@@ -346,7 +383,7 @@ The application now follows a **microservices architecture** layered on top of N
 - Clear, self-documenting validation logic
 - Type-safe validation
 
-### 6. Swagger Documentation
+### 7. Swagger Documentation
 **Decision**: Include Swagger UI for API documentation.
 
 **Reasoning**:

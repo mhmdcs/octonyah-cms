@@ -1,6 +1,17 @@
 version: '3.9'
 
 services:
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: octonyah-rabbitmq
+    restart: unless-stopped
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
   postgres:
     image: postgres:16
     container_name: octonyah-postgres
@@ -22,6 +33,7 @@ services:
     restart: unless-stopped
     depends_on:
       - postgres
+      - rabbitmq
     environment:
       NODE_ENV: production
       CMS_PORT: 3000
@@ -31,6 +43,9 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       DB_DATABASE: octonyah
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      RABBITMQ_QUEUE: program-events
+      RABBITMQ_PREFETCH: 1
     ports:
       - '3000:3000'
 
@@ -42,6 +57,7 @@ services:
     restart: unless-stopped
     depends_on:
       - postgres
+      - rabbitmq
     environment:
       NODE_ENV: production
       DISCOVERY_PORT: 3001
@@ -51,6 +67,9 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       DB_DATABASE: octonyah
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      RABBITMQ_QUEUE: program-events
+      RABBITMQ_PREFETCH: 1
     ports:
       - '3001:3001'
 

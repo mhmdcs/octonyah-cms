@@ -2,9 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { ConfigService } from '@nestjs/config';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -13,6 +16,29 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  const rmqUrl =
+    configService.get<string>('RABBITMQ_URL') || 'amqp://localhost:5672';
+  const rmqQueue =
+    configService.get<string>('RABBITMQ_QUEUE') || 'program-events';
+  const prefetch = parseInt(
+    configService.get<string>('RABBITMQ_PREFETCH') || '1',
+    10,
+  );
+
+  const rmqOptions: MicroserviceOptions = {
+    transport: Transport.RMQ,
+    options: {
+      urls: [rmqUrl],
+      queue: rmqQueue,
+      queueOptions: {
+        durable: true,
+      },
+      prefetchCount: prefetch,
+    },
+  };
+
+  app.connectMicroservice(rmqOptions);
 
   const config = new DocumentBuilder()
     .setTitle('Octonyah Discovery Service')
@@ -24,8 +50,13 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
+  await app.startAllMicroservices();
+
   const port =
-    process.env.DISCOVERY_PORT ?? process.env.PORT ?? process.env.PORT_DISCOVERY ?? 3001;
+    process.env.DISCOVERY_PORT ??
+    process.env.PORT ??
+    process.env.PORT_DISCOVERY ??
+    3001;
   await app.listen(port);
   console.log(`Discovery service running on: http://localhost:${port}`);
   console.log(`Swagger UI available at: http://localhost:${port}/api`);
