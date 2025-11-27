@@ -10,10 +10,17 @@ import {
   ProgramEventMessage,
   Program,
 } from '@octonyah/shared-programs';
+import { RedisCacheService } from '../cache/redis-cache.service';
+import {
+  SEARCH_CACHE_PREFIX,
+  buildProgramCacheKey,
+} from '../cache/cache.constants';
 
 @Controller()
 export class ProgramEventsListener {
   private readonly logger = new Logger(ProgramEventsListener.name);
+
+  constructor(private readonly cache: RedisCacheService) {}
 
   @EventPattern(ProgramEventPattern.ProgramCreated)
   async handleProgramCreated(
@@ -23,6 +30,7 @@ export class ProgramEventsListener {
     this.logger.log(
       `Program created event received: ${data.program.id}`,
     );
+    await this.invalidateCache(data.program?.id);
     this.ack(context);
   }
 
@@ -34,6 +42,7 @@ export class ProgramEventsListener {
     this.logger.log(
       `Program updated event received: ${data.program.id}`,
     );
+    await this.invalidateCache(data.program?.id);
     this.ack(context);
   }
 
@@ -45,7 +54,15 @@ export class ProgramEventsListener {
     this.logger.log(
       `Program deleted event received: ${data.program.id}`,
     );
+    await this.invalidateCache(data.program?.id);
     this.ack(context);
+  }
+
+  private async invalidateCache(programId?: string) {
+    if (programId) {
+      await this.cache.delete(buildProgramCacheKey(programId));
+    }
+    await this.cache.deleteByPrefix(SEARCH_CACHE_PREFIX);
   }
 
   private ack(context: RmqContext) {

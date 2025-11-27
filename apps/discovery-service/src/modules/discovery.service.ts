@@ -17,16 +17,22 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindOptionsWhere } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Program } from '@octonyah/shared-programs';
 import { SearchProgramsDto } from './dto/search-programs.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
+import { RedisCacheService } from '../cache/redis-cache.service';
+import {
+  SEARCH_CACHE_PREFIX,
+  buildProgramCacheKey,
+} from '../cache/cache.constants';
 
 @Injectable()
 export class DiscoveryService {
   constructor(
     @InjectRepository(Program)
     private readonly programRepository: Repository<Program>,
+    private readonly cache: RedisCacheService,
   ) {}
 
   /**
@@ -44,26 +50,10 @@ export class DiscoveryService {
    */
   async searchPrograms(searchDto: SearchProgramsDto): Promise<SearchResponseDto> {
     const { q, category, type, language, page = 1, limit = 20 } = searchDto;
-
-    // Build where conditions for filtering
-    const where: FindOptionsWhere<Program> = {};
-
-    // Text search in title and description
-    if (q) {
-      where.title = Like(`%${q}%`) as any;
-      // TypeORM FindOptionsWhere doesn't easily express OR across columns,
-      // so we lean on the query builder below for richer filtering.
-    }
-
-    // Apply filters
-    if (category) {
-      where.category = category;
-    }
-    if (type) {
-      where.type = type;
-    }
-    if (language) {
-      where.language = language;
+    const cacheKey = this.buildSearchCacheKey({ q, category, type, language, page, limit });
+    const cached = await this.cache.get<SearchResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
     }
 
     // Build query with text search support
@@ -106,7 +96,7 @@ export class DiscoveryService {
     const hasNext = page < totalPages;
     const hasPrev = page > 1;
 
-    return {
+    const response: SearchResponseDto = {
       data: programs,
       total,
       page,
@@ -115,6 +105,9 @@ export class DiscoveryService {
       hasNext,
       hasPrev,
     };
+
+    await this.cache.set(cacheKey, response);
+    return response;
   }
 
   /**
@@ -128,10 +121,18 @@ export class DiscoveryService {
    * @returns The program entity
    */
   async getProgram(id: string): Promise<Program> {
+    const cacheKey = buildProgramCacheKey(id);
+    const cached = await this.cache.get<Program>(cacheKey);
+    if (cached) {
+      return cached as Program;
+    }
+
     const program = await this.programRepository.findOne({ where: { id } });
     if (!program) {
       throw new Error(`Program with ID ${id} not found`);
     }
+
+    await this.cache.set(cacheKey, program);
     return program;
   }
 
@@ -171,6 +172,27 @@ export class DiscoveryService {
     limit: number = 20,
   ): Promise<SearchResponseDto> {
     return this.searchPrograms({ type: type as any, page, limit });
+  }
+
+  private buildSearchCacheKey(params: {
+    q?: string;
+    category?: string;
+    type?: string;
+    language?: string;
+    page: number;
+    limit: number;
+  }) {
+    const normalized = {
+      q: params.q?.trim() ?? '',
+      category: params.category?.trim() ?? '',
+      type: params.type ?? '',
+      language: params.language ?? '',
+      page: params.page,
+      limit: params.limit,
+    };
+
+    const key = Object.values(normalized).join('|');
+    return `${SEARCH_CACHE_PREFIX}:${key}`;
   }
 }
 

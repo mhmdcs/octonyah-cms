@@ -1,6 +1,13 @@
 version: '3.9'
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: octonyah-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+
   rabbitmq:
     image: rabbitmq:3.12-management
     container_name: octonyah-rabbitmq
@@ -58,6 +65,7 @@ services:
     depends_on:
       - postgres
       - rabbitmq
+      - redis
     environment:
       NODE_ENV: production
       DISCOVERY_PORT: 3001
@@ -70,6 +78,10 @@ services:
       RABBITMQ_URL: amqp://rabbitmq:5672
       RABBITMQ_QUEUE: program-events
       RABBITMQ_PREFETCH: 1
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD:
+      REDIS_TTL_SECONDS: 300
     ports:
       - '3001:3001'
 

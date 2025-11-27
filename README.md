@@ -38,6 +38,7 @@ A two-component system built with NestJS and TypeScript for managing and discove
 - ✅ Pagination support
 - ✅ Browse programs by category or type
 - ✅ Public API endpoints for exploration
+- ✅ Redis-backed cache with automatic invalidation via RabbitMQ events
 
 ## Service Layout
 
@@ -49,11 +50,18 @@ This repository follows a NestJS monorepo layout with two microservices and one 
 
 Each service has its own entry point (`main.ts`), module tree, Swagger document, and can be deployed/scaled independently. Shared code is imported through path aliases (`@octonyah/shared-programs`) to keep the services decoupled while avoiding duplication.
 
+Supporting infrastructure (local/dev via Docker Compose):
+
+- `postgres` – canonical system of record for programs
+- `rabbitmq` – async event bus between services
+- `redis` – cache backing the discovery service
+
 ## Inter-service Communication
 
 - **Synchronous HTTP**: Any future synchronous calls between services (if needed) can continue to use REST since each service already exposes its own HTTP API.
 - **Asynchronous messaging**: CMS publishes RabbitMQ events (`program.created`, `program.updated`, `program.deleted`) whenever content changes. Discovery subscribes to the same queue using NestJS’s RMQ transport, enabling cache invalidation, search-index refreshes, analytics fan-out, etc.
 - **Shared contracts**: Event names and payload contracts live in `libs/shared-programs`, ensuring publishers and consumers stay aligned without tight coupling.
+- **Caching + invalidation**: Discovery caches read-heavy endpoints (individual program fetch + search queries) in Redis with a configurable TTL. CMS emits events, and the discovery service invalidates affected cache keys immediately (program-specific keys + all search-result caches), keeping cached data fresh without synchronous coordination.
 - **Future-ready**: Additional consumers (Redis cache warmers, BullMQ queues, Elasticsearch updaters) can subscribe to the same events without modifying the core services.
 
 ## Tech Stack
@@ -64,6 +72,9 @@ Each service has its own entry point (`main.ts`), module tree, Swagger document,
 
 ### Messaging & Communication
 - **RabbitMQ** (via NestJS microservices) - Asynchronous event bus for cross-service communication
+
+### Caching
+- **Redis** (via ioredis) - Distributed cache for read-heavy discovery endpoints with TTL and invalidation
 
 ### Database & ORM
 - **PostgreSQL** (tested with v16) - Reliable relational database, easy to run locally via Docker
@@ -127,6 +138,8 @@ The application uses environment variables for configuration. Edit the `.env` fi
 - `RABBITMQ_URL` - Connection string for RabbitMQ (e.g., `amqp://guest:guest@localhost:5672`)
 - `RABBITMQ_QUEUE` - Queue name for program events (default: `program-events`)
 - `RABBITMQ_PREFETCH` - Prefetch count for consumers (default: `1`)
+- `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` - Redis connection settings (host defaults to `localhost`)
+- `REDIS_TTL_SECONDS` - TTL for cached items (default: `300`)
 - `NODE_ENV` - Environment mode (development/production)
 
 ## Running the Application
@@ -191,6 +204,7 @@ Exposed endpoints:
 - CMS service → http://localhost:3000 (Swagger at `/api`)
 - Discovery service → http://localhost:3001 (Swagger at `/api`)
 - RabbitMQ → AMQP `localhost:5672`, management UI `http://localhost:15672` (guest/guest)
+- Redis → `localhost:6379`
 - Postgres → `localhost:5432` (credentials defined in `docker-compose.yml`)
 
 ### Other Commands
@@ -365,7 +379,16 @@ The application now follows a **microservices architecture** layered on top of N
 - Aligns with future plans (Redis/BullMQ/Elasticsearch) by letting them subscribe to the same events
 - Keeps HTTP surface stable for synchronous needs while offloading heavy work to async jobs
 
-### 5. TypeORM Query Builder for Search
+### 5. Redis Cache for Discovery
+**Decision**: Cache read-heavy discovery endpoints (search + program detail) in Redis with TTL and invalidate via CMS events.
+
+**Reasoning**:
+- Reduces load on Postgres when discovery traffic spikes
+- Keeps cache warm for the most common queries
+- TTL ensures stale data eventually expires even if an event is missed
+- CMS-driven events purge stale keys immediately (program-level + all search keys)
+
+### 6. TypeORM Query Builder for Search
 **Decision**: Use TypeORM Query Builder instead of raw SQL for search functionality.
 
 **Reasoning**:
@@ -374,7 +397,7 @@ The application now follows a **microservices architecture** layered on top of N
 - Built-in protection against SQL injection
 - Easy to maintain and extend
 
-### 6. DTOs for Validation
+### 7. DTOs for Validation
 **Decision**: Use class-validator decorators in DTOs.
 
 **Reasoning**:
@@ -383,7 +406,7 @@ The application now follows a **microservices architecture** layered on top of N
 - Clear, self-documenting validation logic
 - Type-safe validation
 
-### 7. Swagger Documentation
+### 8. Swagger Documentation
 **Decision**: Include Swagger UI for API documentation.
 
 **Reasoning**:
