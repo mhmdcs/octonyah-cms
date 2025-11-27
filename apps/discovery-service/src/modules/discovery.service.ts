@@ -18,7 +18,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, FindOptionsWhere } from 'typeorm';
-import { Program } from '../cms/programs/entities/program.entity';
+import { Program } from '@octonyah/shared-programs';
 import { SearchProgramsDto } from './dto/search-programs.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
 
@@ -51,8 +51,8 @@ export class DiscoveryService {
     // Text search in title and description
     if (q) {
       where.title = Like(`%${q}%`) as any;
-      // Note: SQLite doesn't support OR in FindOptionsWhere easily,
-      // so we'll handle this in the query builder
+      // TypeORM FindOptionsWhere doesn't easily express OR across columns,
+      // so we lean on the query builder below for richer filtering.
     }
 
     // Apply filters

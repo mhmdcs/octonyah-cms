@@ -12,7 +12,7 @@
 import { IsOptional, IsString, IsEnum, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ProgramType, ProgramLanguage } from '../../cms/programs/entities/program.entity';
+import { ProgramType, ProgramLanguage } from '@octonyah/shared-programs';
 
 /**
  * DTO for searching and filtering programs.

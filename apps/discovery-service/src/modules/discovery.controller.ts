@@ -32,7 +32,7 @@ import {
 import { DiscoveryService } from './discovery.service';
 import { SearchProgramsDto } from './dto/search-programs.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
-import { Program } from '../cms/programs/entities/program.entity';
+import { Program } from '@octonyah/shared-programs';
 
 /**
  * Controller class for discovery/public HTTP endpoints.

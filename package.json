@@ -6,13 +6,18 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "nest start",
-    "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "build": "nest build cms-service && nest build discovery-service",
+    "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\" \"test/**/*.ts\"",
+    "start": "npm run start:cms",
+    "start:dev": "npm run start:cms:dev",
+    "start:debug": "nest start cms-service --debug --watch",
+    "start:prod": "node dist/apps/cms-service/main",
+    "start:cms": "nest start cms-service",
+    "start:cms:dev": "nest start cms-service --watch",
+    "start:discovery": "nest start discovery-service",
+    "start:discovery:dev": "nest start discovery-service --watch",
+    "start:discovery:prod": "node dist/apps/discovery-service/main",
+    "lint": "eslint \"{apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -32,7 +37,6 @@
     "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "sqlite3": "^5.1.7",
     "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.27"
   },
@@ -64,20 +68,20 @@
     "typescript-eslint": "^8.20.0"
   },
   "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": ".",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "apps/**/*.(t|j)s",
+      "libs/**/*.(t|j)s"
     ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@octonyah/shared-programs(.*)$": "<rootDir>/libs/shared-programs/src$1"
+    }
   }
 }

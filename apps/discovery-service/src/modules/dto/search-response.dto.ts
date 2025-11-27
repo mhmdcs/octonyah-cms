@@ -7,7 +7,7 @@
  */
 
 import { ApiProperty } from '@nestjs/swagger';
-import { Program } from '../../cms/programs/entities/program.entity';
+import { Program } from '@octonyah/shared-programs';
 
 /**
  * Response DTO for search results.

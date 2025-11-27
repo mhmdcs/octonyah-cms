@@ -10,6 +10,10 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "paths": {
+      "@octonyah/shared-programs": ["libs/shared-programs/src"],
+      "@octonyah/shared-programs/*": ["libs/shared-programs/src/*"]
+    },
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,

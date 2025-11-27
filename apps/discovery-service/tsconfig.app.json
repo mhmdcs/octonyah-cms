@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/apps/discovery-service"
+  },
+  "include": ["src/**/*", "../../libs/shared-programs/src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*spec.ts"]
+}
+

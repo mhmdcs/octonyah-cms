@@ -1,0 +1,59 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: octonyah-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: octonyah
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  cms-service:
+    build:
+      context: .
+      dockerfile: apps/cms-service/Dockerfile
+    container_name: octonyah-cms
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      NODE_ENV: production
+      CMS_PORT: 3000
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: octonyah
+    ports:
+      - '3000:3000'
+
+  discovery-service:
+    build:
+      context: .
+      dockerfile: apps/discovery-service/Dockerfile
+    container_name: octonyah-discovery
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      NODE_ENV: production
+      DISCOVERY_PORT: 3001
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: octonyah
+    ports:
+      - '3001:3001'
+
+volumes:
+  postgres_data:
+

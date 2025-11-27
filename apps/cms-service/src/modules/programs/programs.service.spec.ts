@@ -21,7 +21,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProgramsService } from './programs.service';
-import { Program, ProgramType, ProgramLanguage } from './entities/program.entity';
+import { Program, ProgramType, ProgramLanguage } from '@octonyah/shared-programs';
 import { NotFoundException } from '@nestjs/common';
 
 /**

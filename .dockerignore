@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.github
+.env
+.env.local
+npm-debug.log
+Dockerfile
+Dockerfile.*
+coverage
+tmp
+

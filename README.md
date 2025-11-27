@@ -6,11 +6,12 @@ This document serves as the technical report for the Octonyah CMS & Discovery Sy
 
 ---
 
-A two-component system built with NestJS and TypeScript for managing and discovering video podcasts and documentaries. This system provides a Content Management System (CMS) for internal content management and a Discovery System for public search and exploration.
+A two-component system built with NestJS and TypeScript for managing and discovering video podcasts and documentaries. This repository now hosts two independent NestJS microservices—`cms-service` and `discovery-service`—plus a shared library so both services stay in sync while remaining deployable on their own timelines.
 
 ## Table of Contents
 
 - [Features](#features)
+- [Service Layout](#service-layout)
 - [Tech Stack](#tech-stack)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
@@ -37,6 +38,16 @@ A two-component system built with NestJS and TypeScript for managing and discove
 - ✅ Pagination support
 - ✅ Browse programs by category or type
 - ✅ Public API endpoints for exploration
+
+## Service Layout
+
+This repository follows a NestJS monorepo layout with two microservices and one shared library:
+
+- `apps/cms-service` – Internal CMS microservice responsible for authoring, validating, and publishing programs.
+- `apps/discovery-service` – Public-facing microservice that exposes search/browse APIs for end users.
+- `libs/shared-programs` – Shared TypeORM entities, enums, and future cross-service contracts.
+
+Each service has its own entry point (`main.ts`), module tree, Swagger document, and can be deployed/scaled independently. Shared code is imported through path aliases (`@octonyah/shared-programs`) to keep the services decoupled while avoiding duplication.
 
 ## Tech Stack
 
@@ -99,7 +110,7 @@ A two-component system built with NestJS and TypeScript for managing and discove
 
 The application uses environment variables for configuration. Edit the `.env` file to customize:
 
-- `PORT` - Server port (default: 3000)
+- `CMS_PORT` / `DISCOVERY_PORT` - Default ports for each microservice
 - `DB_HOST` / `DB_PORT` - PostgreSQL host and port
 - `DB_USERNAME` / `DB_PASSWORD` - PostgreSQL credentials
 - `DB_DATABASE` - PostgreSQL database name (default: octonyah)
@@ -123,24 +134,35 @@ Update the `.env` file if you change any of the credentials or ports.
 
 ### Development Mode
 
-Start the application in watch mode (auto-reloads on file changes):
+Run each microservice in its own terminal (or process manager):
+
+#### CMS service (internal APIs)
 
 ```bash
-npm run start:dev
+npm run start:cms:dev
 ```
 
-The application will start on `http://localhost:3000` (or the port specified in `.env`).
+Default endpoint: `http://localhost:${CMS_PORT}` (3000 by default).
+
+#### Discovery service (public APIs)
+
+```bash
+npm run start:discovery:dev
+```
+
+Default endpoint: `http://localhost:${DISCOVERY_PORT}` (3001 by default).
 
 ### Production Mode
 
-1. Build the application:
+1. Build both services:
    ```bash
    npm run build
    ```
 
-2. Start the production server:
+2. Start the desired service:
    ```bash
-   npm run start:prod
+   npm run start:prod           # CMS service
+   npm run start:discovery:prod # Discovery service
    ```
 
 ### Other Commands
@@ -155,11 +177,10 @@ The application will start on `http://localhost:3000` (or the port specified in 
 
 ### Swagger UI
 
-Once the application is running, access the interactive API documentation at:
+Once each service is running, Swagger UI is exposed per service:
 
-```
-http://localhost:3000/api
-```
+- CMS service: `http://localhost:${CMS_PORT}/api` (default `http://localhost:3000/api`)
+- Discovery service: `http://localhost:${DISCOVERY_PORT}/api` (default `http://localhost:3001/api`)
 
 Swagger UI provides:
 - Complete API endpoint documentation
@@ -169,17 +190,18 @@ Swagger UI provides:
 
 ### API Endpoints
 
-#### Root Endpoint
+#### CMS service (internal)
+- Base URL: `http://localhost:${CMS_PORT}` (default `http://localhost:3000`)
 - `GET /` - Hello World endpoint for testing
-
-#### CMS Endpoints (Internal)
 - `POST /cms/programs` - Create a new program
 - `GET /cms/programs` - Get all programs
 - `GET /cms/programs/:id` - Get a program by ID
 - `PATCH /cms/programs/:id` - Update a program
 - `DELETE /cms/programs/:id` - Delete a program
 
-#### Discovery Endpoints (Public)
+#### Discovery service (public)
+- Base URL: `http://localhost:${DISCOVERY_PORT}` (default `http://localhost:3001`)
+- `GET /` - Hello endpoint for sanity checks
 - `GET /discovery/search` - Search programs with filters and pagination
 - `GET /discovery/programs/:id` - Get a program by ID (public)
 - `GET /discovery/categories/:category` - Get programs by category
@@ -202,9 +224,9 @@ curl -X POST http://localhost:3000/cms/programs \
   }'
 ```
 
-**Search programs:**
+**Search programs (discovery service):**
 ```bash
-curl "http://localhost:3000/discovery/search?q=technology&category=Technology&page=1&limit=20"
+curl "http://localhost:3001/discovery/search?q=technology&category=Technology&page=1&limit=20"
 ```
 
 ## Architecture
@@ -212,48 +234,58 @@ curl "http://localhost:3000/discovery/search?q=technology&category=Technology&pa
 ### Project Structure
 
 ```
-src/
-├── app.module.ts              # Root module
-├── app.controller.ts          # Root controller (Hello World)
-├── main.ts                    # Application entry point
-└── modules/
-    ├── cms/                   # Content Management System
-    │   ├── cms.module.ts
-    │   └── programs/
-    │       ├── programs.module.ts
-    │       ├── programs.controller.ts
-    │       ├── programs.service.ts
-    │       ├── entities/
-    │       │   └── program.entity.ts
-    │       └── dto/
-    │           ├── create-program.dto.ts
-    │           └── update-program.dto.ts
-    └── discovery/             # Discovery System
-        ├── discovery.module.ts
-        ├── discovery.controller.ts
-        ├── discovery.service.ts
-        └── dto/
-            ├── search-programs.dto.ts
-            └── search-response.dto.ts
+apps/
+├── cms-service/
+│   └── src/
+│       ├── app.controller.ts
+│       ├── app.module.ts
+│       ├── main.ts
+│       └── modules/
+│           └── programs/
+│               ├── dto/
+│               │   ├── create-program.dto.ts
+│               │   └── update-program.dto.ts
+│               ├── programs.controller.ts
+│               ├── programs.module.ts
+│               └── programs.service.ts
+└── discovery-service/
+    └── src/
+        ├── app.controller.ts
+        ├── app.module.ts
+        ├── main.ts
+        └── modules/
+            └── discovery.module.ts
+                ├── discovery.controller.ts
+                ├── discovery.service.ts
+                └── dto/
+                    ├── search-programs.dto.ts
+                    └── search-response.dto.ts
+
+libs/
+└── shared-programs/            # Shared entities/enums reused by both services
+    └── src/
+        ├── entities/
+        │   └── program.entity.ts
+        └── index.ts
 ```
 
 ### Module Architecture
 
-The application follows a **modular architecture** with clear separation of concerns:
+The application now follows a **microservices architecture** layered on top of NestJS' modular pattern:
 
-1. **CMS Module** - Internal content management
+1. **CMS microservice (`apps/cms-service`)** – Internal content management
    - Handles CRUD operations for programs
    - Validates input data
-   - Manages program metadata
+   - Manages program metadata and future editorial workflows
 
-2. **Discovery Module** - Public search and exploration
+2. **Discovery microservice (`apps/discovery-service`)** – Public search and exploration
    - Provides search functionality
-   - Implements filtering and pagination
-   - Separate from CMS to maintain clear boundaries
+   - Implements filtering, pagination, and browse experiences
+   - Exposes only read APIs to keep the surface limited and cache-friendly
 
-3. **Shared Entities** - Both modules use the same `Program` entity
-   - Ensures data consistency
-   - Single source of truth
+3. **Shared Programs library (`libs/shared-programs`)**
+   - Hosts the `Program` entity/enums so both services stay in sync
+   - Future place for shared DTOs/messages/events
 
 ### Design Patterns
 
@@ -286,15 +318,15 @@ The application follows a **modular architecture** with clear separation of conc
 
 **Trade-off**: Requires running a separate service (Docker/container or managed instance), but the extra setup cost is worth the scalability and feature set.
 
-### 3. Modular Architecture
-**Decision**: Separate CMS and Discovery into distinct modules.
+### 3. Microservices + Shared Library
+**Decision**: Run CMS and Discovery as separate NestJS applications that share a small library.
 
 **Reasoning**:
-- **Separation of Concerns**: CMS handles content management, Discovery handles public search
-- **Low Coupling**: Modules can evolve independently
-- **Clear Boundaries**: Easy to understand which endpoints are internal vs public
-- **Scalability**: Can scale modules independently if needed
-- **SOLID Principles**: Single Responsibility Principle - each module has one clear purpose
+- **Separation of Concerns**: Teams can deploy/scale authoring and discovery independently
+- **Clear Contracts**: Shared library keeps entities in sync without tight coupling
+- **Operational Safety**: Public surface (discovery) does not expose write operations
+- **Scalability**: Each service can be replicated or containerized on its own schedule
+- **Future-proofing**: Easier to insert message queues/API gateway later
 
 ### 4. TypeORM Query Builder for Search
 **Decision**: Use TypeORM Query Builder instead of raw SQL for search functionality.
@@ -458,13 +490,22 @@ The application follows a **modular architecture** with clear separation of conc
 - Error codes and messages
 - Detailed error logging
 
+### 13. Service-to-Service Communication
+**Current**: Both microservices read/write the same Postgres database directly.
+
+**Improvement**:
+- Introduce asynchronous messaging (e.g., NATS, Kafka) for propagating CMS changes
+- Add an API gateway if synchronous communication is needed
+- Publish domain events from CMS that Discovery (or other consumers) can subscribe to
+- Allow future services (search indexers, analytics) to consume the same stream
+
 ## Scalability Considerations
 
 For handling **10 million users per hour**, the following would be necessary:
 
-1. **Horizontal Scaling**: Multiple application instances behind a load balancer
+1. **Horizontal Scaling**: Replicate each microservice independently behind load balancers
 2. **Database Scaling**: 
-   - Read replicas for Discovery endpoints
+   - Read replicas for the discovery microservice
    - Connection pooling (pgBouncer)
    - Database sharding if needed
 3. **Caching**: Aggressive caching strategy with Redis

@@ -21,7 +21,7 @@ import {
   IsOptional,
   Min,
 } from 'class-validator';
-import { ProgramType, ProgramLanguage } from '../entities/program.entity';
+import { ProgramType, ProgramLanguage } from '@octonyah/shared-programs';
 
 /**
  * DTO for creating a new program.

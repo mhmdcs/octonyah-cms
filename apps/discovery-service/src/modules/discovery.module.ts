@@ -19,7 +19,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DiscoveryService } from './discovery.service';
 import { DiscoveryController } from './discovery.controller';
-import { Program } from '../cms/programs/entities/program.entity';
+import { Program } from '@octonyah/shared-programs';
 
 /**
  * Discovery Module Configuration
