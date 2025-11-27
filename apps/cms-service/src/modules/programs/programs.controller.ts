@@ -25,17 +25,30 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ProgramsService } from './programs.service';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { UpdateProgramDto } from './dto/update-program.dto';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/roles.decorator';
 
 /**
  * Controller class for program HTTP endpoints.
  * All routes are prefixed with 'cms/programs'.
  */
 @ApiTags('CMS Programs')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('cms/programs')
 export class ProgramsController {
   /**
@@ -54,6 +67,7 @@ export class ProgramsController {
    * @returns The newly created program
    */
   @Post()
+  @Roles('admin', 'editor')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new program' })
   @ApiBody({ type: CreateProgramDto })
@@ -72,6 +86,7 @@ export class ProgramsController {
    * @returns Array of all programs, ordered by publication date (newest first)
    */
   @Get()
+  @Roles('admin', 'editor')
   @ApiOperation({ summary: 'Get all programs' })
   @ApiResponse({ status: 200, description: 'List of all programs' })
   findAll() {
@@ -88,6 +103,7 @@ export class ProgramsController {
    * @returns The program entity
    */
   @Get(':id')
+  @Roles('admin', 'editor')
   @ApiOperation({ summary: 'Get a program by ID' })
   @ApiParam({ name: 'id', description: 'Program UUID' })
   @ApiResponse({ status: 200, description: 'Program found' })
@@ -109,6 +125,7 @@ export class ProgramsController {
    * @returns The updated program
    */
   @Patch(':id')
+  @Roles('admin', 'editor')
   @ApiOperation({ summary: 'Update a program' })
   @ApiParam({ name: 'id', description: 'Program UUID' })
   @ApiBody({ type: UpdateProgramDto })
@@ -128,6 +145,7 @@ export class ProgramsController {
    * @param id - UUID of the program to delete (from URL parameter)
    */
   @Delete(':id')
+  @Roles('admin')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a program' })
   @ApiParam({ name: 'id', description: 'Program UUID' })

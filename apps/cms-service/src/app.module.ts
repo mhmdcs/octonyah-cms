@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { ProgramsModule } from './modules/programs/programs.module';
 import { Program } from '@octonyah/shared-programs';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { Program } from '@octonyah/shared-programs';
       }),
     }),
     ProgramsModule,
+    AuthModule,
   ],
   controllers: [AppController],
 })

@@ -31,6 +31,7 @@ A two-component system built with NestJS and TypeScript for managing and discove
 - ✅ Input validation and error handling
 - ✅ RESTful API endpoints for frontend integration
 - ✅ Swagger documentation
+- ✅ JWT auth + RBAC (admin vs editor) for CMS-only endpoints
 
 ### Task 2: Discovery System
 - ✅ Public search interface with text search
@@ -216,6 +217,17 @@ Exposed endpoints:
 - **Format code**: `npm run format`
 
 ## API Documentation
+
+### Authentication (CMS service)
+
+- `POST /auth/login` – Exchange username/password for a JWT access token.
+- Sample users (stored in-memory for this prototype):
+  - **Admin** – username: `admin`, password: `admin123` (roles: admin + editor)
+  - **Editor** – username: `editor`, password: `editor123` (role: editor)
+- Include the JWT via `Authorization: Bearer <token>` on any `/cms/**` request.
+- RBAC summary:
+  - `admin` → full access (create, update, delete)
+  - `editor` → create/update/read only (no delete)
 
 ### Swagger UI
 
