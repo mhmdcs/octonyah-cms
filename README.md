@@ -45,7 +45,7 @@ A two-component system built with NestJS and TypeScript for managing and discove
 - **TypeScript** (v5.7.3) - Type-safe JavaScript for better developer experience
 
 ### Database & ORM
-- **SQLite** (v5.1.7) - Lightweight, file-based database (chosen for simplicity in this project)
+- **PostgreSQL** (tested with v16) - Reliable relational database, easy to run locally via Docker
 - **TypeORM** (v0.3.27) - Object-Relational Mapping for database operations
 
 ### Validation & Transformation
@@ -86,8 +86,12 @@ A two-component system built with NestJS and TypeScript for managing and discove
    The `.env` file contains:
    ```env
    PORT=3000
-   DB_TYPE=sqlite
-   DB_DATABASE=octonyah.db
+   DB_TYPE=postgres
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_USERNAME=postgres
+   DB_PASSWORD=postgres
+   DB_DATABASE=octonyah
    NODE_ENV=development
    ```
 
@@ -96,10 +100,26 @@ A two-component system built with NestJS and TypeScript for managing and discove
 The application uses environment variables for configuration. Edit the `.env` file to customize:
 
 - `PORT` - Server port (default: 3000)
-- `DB_DATABASE` - SQLite database filename (default: octonyah.db)
+- `DB_HOST` / `DB_PORT` - PostgreSQL host and port
+- `DB_USERNAME` / `DB_PASSWORD` - PostgreSQL credentials
+- `DB_DATABASE` - PostgreSQL database name (default: octonyah)
 - `NODE_ENV` - Environment mode (development/production)
 
 ## Running the Application
+
+### Start PostgreSQL (local dev)
+
+If you don't already have PostgreSQL running, you can spin up a disposable instance via Docker:
+
+```bash
+docker run --name octonyah-postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=octonyah \
+  -p 5432:5432 \
+  -d postgres:16
+```
+
+Update the `.env` file if you change any of the credentials or ports.
 
 ### Development Mode
 
@@ -254,17 +274,17 @@ The application follows a **modular architecture** with clear separation of conc
 - Strong ecosystem and community support
 - Built-in support for Swagger, validation, and testing
 
-### 2. SQLite Database
-**Decision**: Use SQLite instead of PostgreSQL or MySQL.
+### 2. PostgreSQL Database
+**Decision**: Use PostgreSQL as the relational database.
 
 **Reasoning**:
-- Simple setup - no separate database server required
-- File-based, easy to backup and version control
-- Sufficient for the project scope (job interview project)
-- Can easily migrate to PostgreSQL in production
-- TypeORM supports multiple databases, making migration straightforward
+- Production-ready relational database with strong reliability guarantees
+- Works seamlessly with TypeORM and NestJS ecosystem
+- Easy to run locally via Docker while matching production topology
+- Supports advanced features (JSONB, full-text search, native enums) for future growth
+- Clear migration path to managed cloud databases
 
-**Trade-off**: SQLite doesn't support some advanced features (like native ENUM types), but we worked around this by using VARCHAR with validation.
+**Trade-off**: Requires running a separate service (Docker/container or managed instance), but the extra setup cost is worth the scalability and feature set.
 
 ### 3. Modular Architecture
 **Decision**: Separate CMS and Discovery into distinct modules.
@@ -305,12 +325,12 @@ The application follows a **modular architecture** with clear separation of conc
 
 ## Challenges Faced
 
-### 1. SQLite Enum Limitation
-**Challenge**: SQLite doesn't support native ENUM types.
+### 1. PostgreSQL Environment Parity
+**Challenge**: Ensuring every environment (local, staging, interview review) runs PostgreSQL with the same configuration.
 
-**Solution**: Used VARCHAR columns with enum validation at the application level. The DTOs and entity use TypeScript enums, but the database stores them as strings.
+**Solution**: Externalized every connection parameter to `.env`, added a Docker command for local setup, and switched TypeORM to `forRootAsync` so it reads runtime configuration safely.
 
-**Impact**: Slight performance overhead for enum validation, but maintains type safety in the application layer.
+**Impact**: Developers can spin up the API against any PostgreSQL instance without changing code, and production can disable schema synchronization while development keeps the fast feedback loop.
 
 ### 2. Text Search Implementation
 **Challenge**: Implementing efficient text search across title and description fields.
@@ -331,14 +351,14 @@ The application follows a **modular architecture** with clear separation of conc
 
 ## Future Improvements
 
-### 1. Database Migration
-**Current**: SQLite with `synchronize: true` (development only)
+### 1. Database Hardening
+**Current**: PostgreSQL with `synchronize: true` during development.
 
 **Improvement**: 
-- Migrate to PostgreSQL for production
-- Implement proper database migrations
-- Add connection pooling for better performance
-- Use environment-specific database configurations
+- Add TypeORM migrations and disable `synchronize` in all shared environments
+- Introduce connection pooling/PG Bouncer for better concurrency
+- Move to managed PostgreSQL (RDS, Cloud SQL, etc.) with automatic backups
+- Use environment-specific configuration files or secrets management
 
 ### 2. Full-Text Search
 **Current**: SQL LIKE queries for text search

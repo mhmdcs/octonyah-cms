@@ -15,7 +15,7 @@
 
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CmsModule } from './modules/cms/cms.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { AppController } from './app.controller';
@@ -33,12 +33,20 @@ import { Program } from './modules/cms/programs/entities/program.entity';
   imports: [
     // Global configuration module - makes .env variables available app-wide
     ConfigModule.forRoot({ isGlobal: true }),
-    // Database configuration - SQLite database file named 'octonyah.db'
-    TypeOrmModule.forRoot({
-      type: 'sqlite',
-      database: 'octonyah.db',
-      entities: [Program], // Register all entities here
-      synchronize: true, // Only for development - auto-creates/updates schema
+    // Database configuration - PostgreSQL connection driven by environment variables
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: (config.get<string>('DB_TYPE') || 'postgres') as 'postgres',
+        host: config.get<string>('DB_HOST', 'localhost'),
+        port: parseInt(config.get<string>('DB_PORT', '5432'), 10),
+        username: config.get<string>('DB_USERNAME', 'postgres'),
+        password: config.get<string>('DB_PASSWORD', 'postgres'),
+        database: config.get<string>('DB_DATABASE', 'octonyah'),
+        entities: [Program], // Register all entities here
+        synchronize: config.get<string>('NODE_ENV') !== 'production', // Auto sync only outside prod
+      }),
     }),
     // Import CMS module which contains all CMS-related features
     CmsModule,
