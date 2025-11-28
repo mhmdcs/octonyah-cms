@@ -19,6 +19,7 @@ async function bootstrap() {
     .setDescription('Internal service for managing programs')
     .setVersion('1.0')
     .addTag('CMS Programs', 'Program management endpoints (internal)')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
