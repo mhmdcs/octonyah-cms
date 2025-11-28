@@ -61,16 +61,15 @@ Supporting infrastructure (local/dev via Docker Compose):
 
 ## Inter-service Communication
 
-- **Synchronous HTTP**: Any future synchronous calls between services (if needed) can continue to use REST since each service already exposes its own HTTP API.
 - **Asynchronous messaging**: CMS publishes RabbitMQ events (`program.created`, `program.updated`, `program.deleted`) whenever content changes. Discovery subscribes to the same queue using NestJS’s RMQ transport, enabling cache invalidation, search-index refreshes, analytics fan-out, etc.
 - **Shared contracts**: Event names and payload contracts live in `libs/shared-programs`, ensuring publishers and consumers stay aligned without tight coupling.
 - **Caching + invalidation**: Discovery caches read-heavy endpoints (individual program fetch + search queries) in Redis with a configurable TTL. CMS emits events, and the discovery service invalidates affected cache keys immediately (program-specific keys + all search-result caches), keeping cached data fresh without synchronous coordination.
 - **Elasticsearch read model**: Discovery maintains a secondary search index that is updated asynchronously from CMS events and BullMQ worker jobs, allowing fast full-text search, filtering, and sorting without hammering Postgres.
-- **Future-ready**: Additional consumers (Redis cache warmers, BullMQ queues, analytics services) can subscribe to the same events without modifying the core services.
+- **Scalable & Future-ready**: Additional consumers (Redis cache warmers, BullMQ queues, analytics services) can subscribe to the same events without modifying the core services.
 
 ## Tech Stack
 
-### Core Framework
+### Backend Framework
 - **NestJS** - Node.js framework
 - **TypeScript** - So that I don't lose my mind programming in cowboy JavaScript
 
@@ -154,60 +153,13 @@ The application uses environment variables for configuration. Edit the `.env` fi
 
 ## Running the Application
 
-### Start PostgreSQL (local dev)
-
-If you don't already have PostgreSQL running, you can spin up a disposable instance via Docker:
-
-```bash
-docker run --name octonyah-postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=octonyah \
-  -p 5432:5432 \
-  -d postgres:16
-```
-
-Update the `.env` file if you change any of the credentials or ports.
-
-### Development Mode
-
-### Docker Compose (All services + Postgres)
+### Docker Compose (All services)
 
 Run the entire stack (Postgres + both microservices) with a single command:
 
 ```bash
 docker compose up --build
 ```
-
-Run each microservice in its own terminal:
-
-#### CMS service (internal APIs)
-
-```bash
-npm run start:cms:dev
-```
-
-Default endpoint: `http://localhost:${CMS_PORT}` (3000 by default).
-
-#### Discovery service (public APIs)
-
-```bash
-npm run start:discovery:dev
-```
-
-Default endpoint: `http://localhost:${DISCOVERY_PORT}` (3001 by default).
-
-### Production Mode
-
-1. Build both services:
-   ```bash
-   npm run build
-   ```
-
-2. Start the desired service:
-   ```bash
-   npm run start:prod           # CMS service
-   npm run start:discovery:prod # Discovery service
-   ```
 
 Exposed endpoints:
 
@@ -224,7 +176,6 @@ Exposed endpoints:
 - **Run tests in watch mode**: `npm run test:watch`
 - **Run tests with coverage**: `npm run test:cov`
 - **Lint code**: `npm run lint`
-- **Format code**: `npm run format`
 
 ## API Documentation
 
@@ -342,9 +293,9 @@ libs/
         └── index.ts
 ```
 
-### Module Architecture
+### Modular Architecture
 
-The application now follows a **microservices architecture** layered on top of NestJS' modular pattern:
+Octonyah follows a **microservices architecture** layered on top of NestJS' modular pattern:
 
 1. **CMS microservice (`apps/cms-service`)** – Internal content management
    - Handles CRUD operations for programs
