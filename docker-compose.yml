@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.0
     container_name: octonyah-elasticsearch
     restart: unless-stopped
     environment:

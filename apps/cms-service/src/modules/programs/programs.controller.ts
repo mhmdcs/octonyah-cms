@@ -33,16 +33,6 @@ import { Roles } from '../../auth/roles.decorator';
 export class ProgramsController {
   constructor(private readonly programsService: ProgramsService) {}
 
-  /**
-   * POST /cms/programs
-   * 
-   * Creates a new program.
-   * Request body is automatically validated against CreateProgramDto.
-   * Returns HTTP 201 (Created) status code.
-   * 
-   * @param createProgramDto - Validated program data from request body
-   * @returns The newly created program
-   */
   @Post()
   @Roles('admin', 'editor')
   @HttpCode(HttpStatus.CREATED)
@@ -54,14 +44,6 @@ export class ProgramsController {
     return this.programsService.create(createProgramDto);
   }
 
-  /**
-   * GET /cms/programs
-   * 
-   * Retrieves all programs.
-   * Returns HTTP 200 (OK) with array of programs.
-   * 
-   * @returns Array of all programs, ordered by publication date (newest first)
-   */
   @Get()
   @Roles('admin', 'editor')
   @ApiOperation({ summary: 'Get all programs' })
@@ -70,15 +52,6 @@ export class ProgramsController {
     return this.programsService.findAll();
   }
 
-  /**
-   * GET /cms/programs/:id
-   * 
-   * Retrieves a specific program by its ID.
-   * Returns HTTP 200 (OK) if found, or HTTP 404 (Not Found) if not found.
-   * 
-   * @param id - UUID of the program to retrieve (from URL parameter)
-   * @returns The program entity
-   */
   @Get(':id')
   @Roles('admin', 'editor')
   @ApiOperation({ summary: 'Get a program by ID' })
@@ -89,18 +62,6 @@ export class ProgramsController {
     return this.programsService.findOne(id);
   }
 
-  /**
-   * PATCH /cms/programs/:id
-   * 
-   * Updates an existing program with partial data.
-   * Request body is automatically validated against UpdateProgramDto.
-   * Only provided fields will be updated (partial update).
-   * Returns HTTP 200 (OK) with updated program, or HTTP 404 if not found.
-   * 
-   * @param id - UUID of the program to update (from URL parameter)
-   * @param updateProgramDto - Partial program data from request body
-   * @returns The updated program
-   */
   @Patch(':id')
   @Roles('admin', 'editor')
   @ApiOperation({ summary: 'Update a program' })
@@ -113,14 +74,6 @@ export class ProgramsController {
     return this.programsService.update(id, updateProgramDto);
   }
 
-  /**
-   * DELETE /cms/programs/:id
-   * 
-   * Deletes a program from the database.
-   * Returns HTTP 204 (No Content) on success, or HTTP 404 if not found.
-   * 
-   * @param id - UUID of the program to delete (from URL parameter)
-   */
   @Delete(':id')
   @Roles('admin')
   @HttpCode(HttpStatus.NO_CONTENT)

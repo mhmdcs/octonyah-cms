@@ -16,23 +16,15 @@ export class ProgramIndexQueueService {
   ) {}
 
   async enqueueProgram(programId?: string) {
-    if (!programId) {
-      return;
-    }
-    await this.queue.add(
-      INDEX_PROGRAM_JOB,
-      { programId },
-      {
-        removeOnComplete: 50,
-        removeOnFail: 50,
-      },
-    );
+    if (!programId) return;
+    await this.queue.add(INDEX_PROGRAM_JOB, { programId }, {
+      removeOnComplete: 50,
+      removeOnFail: 50,
+    });
   }
 
   async enqueueFullReindex() {
-    await this.queue.add(
-      REINDEX_ALL_JOB,
-      {},
+    await this.queue.add(REINDEX_ALL_JOB,{},
       {
         removeOnComplete: false,
         removeOnFail: false,
@@ -41,14 +33,8 @@ export class ProgramIndexQueueService {
   }
 
   async enqueueRemoval(programId?: string) {
-    if (!programId) {
-      return;
-    }
-
-    await this.queue.add(
-      REMOVE_PROGRAM_JOB,
-      { programId },
-      {
+    if (!programId) return;
+    await this.queue.add(REMOVE_PROGRAM_JOB, { programId }, {
         removeOnComplete: 50,
         removeOnFail: 50,
       },

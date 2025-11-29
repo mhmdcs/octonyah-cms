@@ -21,12 +21,7 @@ import { ProgramSearchService } from './program-search.service';
           node,
           maxRetries: 5,
           requestTimeout: 60000,
-          auth: username
-            ? {
-                username,
-                password: password ?? '',
-              }
-            : undefined,
+          auth: username ? { username, password: password ?? '', } : undefined,
         };
       },
     }),

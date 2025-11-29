@@ -58,15 +58,9 @@ export class ProgramsService {
     if (updateProgramDto.type !== undefined) updateData.type = updateProgramDto.type;
     if (updateProgramDto.language !== undefined) updateData.language = updateProgramDto.language;
     if (updateProgramDto.duration !== undefined) updateData.duration = updateProgramDto.duration;
-    if (updateProgramDto.tags !== undefined) {
-      updateData.tags = this.normalizeTags(updateProgramDto.tags);
-    }
-    if (updateProgramDto.popularityScore !== undefined) {
-      updateData.popularityScore = updateProgramDto.popularityScore;
-    }
-    if (updateProgramDto.publicationDate !== undefined) {
-      updateData.publicationDate = new Date(updateProgramDto.publicationDate);
-    }
+    if (updateProgramDto.tags !== undefined) updateData.tags = this.normalizeTags(updateProgramDto.tags);
+    if (updateProgramDto.popularityScore !== undefined) updateData.popularityScore = updateProgramDto.popularityScore;
+    if (updateProgramDto.publicationDate !== undefined) updateData.publicationDate = new Date(updateProgramDto.publicationDate);
 
     Object.assign(program, updateData);
     const updated = await this.programRepository.save(program);

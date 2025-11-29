@@ -13,7 +13,7 @@ import { BullModule } from '@nestjs/bullmq';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: (config.get<string>('DB_TYPE') || 'postgres') as 'postgres',
+        type: (config.get<string>('DB_TYPE', 'postgres') as 'postgres'),
         host: config.get<string>('DB_HOST', 'localhost'),
         port: parseInt(config.get<string>('DB_PORT', '5432'), 10),
         username: config.get<string>('DB_USERNAME', 'postgres'),
@@ -30,7 +30,7 @@ import { BullModule } from '@nestjs/bullmq';
         connection: {
           host: config.get<string>('REDIS_HOST', 'localhost'),
           port: parseInt(config.get<string>('REDIS_PORT', '6379'), 10),
-          password: config.get<string>('REDIS_PASSWORD') || undefined,
+          password: config.get<string>('REDIS_PASSWORD'),
         },
       }),
     }),

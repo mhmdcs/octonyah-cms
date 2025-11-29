@@ -18,7 +18,7 @@ import { SearchModule } from '../search/search.module';
         connection: {
           host: config.get<string>('REDIS_HOST', 'localhost'),
           port: parseInt(config.get<string>('REDIS_PORT', '6379'), 10),
-          password: config.get<string>('REDIS_PASSWORD') || undefined,
+          password: config.get<string>('REDIS_PASSWORD'),
         },
       }),
     }),

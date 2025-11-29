@@ -52,11 +52,11 @@ async function bootstrap() {
 
   await app.startAllMicroservices();
 
-  const port =
-    process.env.DISCOVERY_PORT ??
-    process.env.PORT ??
-    process.env.PORT_DISCOVERY ??
-    3001;
+  const port = configService.get<number>('DISCOVERY_PORT') ?? 
+             configService.get<number>('PORT') ?? 
+             configService.get<number>('PORT_DISCOVERY') ?? 
+             3001;
+             
   await app.listen(port);
   console.log(`Discovery service running on: http://localhost:${port}`);
   console.log(`Swagger UI available at: http://localhost:${port}/api`);

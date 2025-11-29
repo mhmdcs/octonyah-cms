@@ -59,13 +59,10 @@ export class SearchProgramsDto {
     type: [String],
   })
   @IsOptional()
-  @Transform(({ value }) =>
-    Array.isArray(value)
-      ? value
-      : value
-      ? [value]
-      : undefined,
-  )
+  @Transform(({ value }) => {
+    if (!value) return undefined;
+    return Array.isArray(value) ? value : [value];
+  })
   @IsArray()
   @IsString({ each: true })
   tags?: string[];

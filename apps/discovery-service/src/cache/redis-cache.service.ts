@@ -22,7 +22,7 @@ export class RedisCacheService implements OnModuleDestroy {
       : new Redis({
           host,
           port,
-          password: password || undefined,
+          password: password,
         });
 
     this.defaultTtlSeconds = parseInt(

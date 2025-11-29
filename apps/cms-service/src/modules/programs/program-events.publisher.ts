@@ -58,11 +58,7 @@ export class ProgramEventsPublisher {
     };
   }
 
-  private toIso(value?: Date | string) {
-    if (!value) {
-      return value;
-    }
-
+  private toIso(value?: Date | string): string | undefined {
     return value instanceof Date ? value.toISOString() : value;
   }
 }

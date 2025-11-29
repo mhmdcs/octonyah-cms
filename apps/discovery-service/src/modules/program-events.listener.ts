@@ -72,9 +72,7 @@ export class ProgramEventsListener {
     const originalMsg: unknown = context.getMessage();
 
     if (this.isAmqpChannel(channelRef) && this.isAmqpMessage(originalMsg)) {
-      const confirmedChannel: Channel = channelRef;
-      const confirmedMessage: Message = originalMsg;
-      confirmedChannel.ack(confirmedMessage);
+      channelRef.ack(originalMsg); // confirmed channel acknowledges confirmed mssage
     }
     /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
   }
@@ -88,6 +86,6 @@ export class ProgramEventsListener {
   }
 
   private isAmqpMessage(message: unknown): message is Message {
-    return typeof message === 'object' && message !== null;
+    return (typeof message === 'object' && message !== null && 'content' in message);
   }
 }

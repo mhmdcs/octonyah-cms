@@ -9,6 +9,8 @@ import {
 import { SearchProgramsDto } from '../modules/dto/search-programs.dto';
 import { SearchResponseDto } from '../modules/dto/search-response.dto';
 import { ProgramSearchDocument } from './program-search.types';
+import { SearchTotalHits } from '@elastic/elasticsearch/lib/api/types';
+import { errors } from '@elastic/elasticsearch';
 
 @Injectable()
 export class ProgramSearchService implements OnModuleInit {
@@ -31,13 +33,9 @@ export class ProgramSearchService implements OnModuleInit {
 
   private async ensureIndex() {
     try {
-      const existsResponse = await this.esService.indices.exists({
+      const indexExists = await this.esService.indices.exists({
         index: this.indexName,
       });
-      const indexExists =
-        typeof existsResponse === 'boolean'
-          ? existsResponse
-          : (existsResponse as { body: boolean }).body;
 
       if (!indexExists) {
         await this.esService.indices.create({
@@ -99,7 +97,7 @@ export class ProgramSearchService implements OnModuleInit {
     if (category) filter.push({ term: { category } });
     if (type) filter.push({ term: { type } });
     if (language) filter.push({ term: { language } });
-    if (tags && tags.length > 0) {
+    if (tags?.length) {
       filter.push({ terms: { tags } });
     }
     if (startDate || endDate) {
@@ -111,7 +109,7 @@ export class ProgramSearchService implements OnModuleInit {
 
     const query: Record<string, any> = {
       bool: {
-        must: must.length ? must : [{ match_all: {} }],
+        must,
         filter,
       },
     };
@@ -127,10 +125,7 @@ export class ProgramSearchService implements OnModuleInit {
         sort: sortClause,
       });
 
-      const total: number =
-        typeof response.hits.total === 'number'
-          ? response.hits.total
-          : (response.hits.total?.value ?? 0);
+      const total = (response.hits.total as SearchTotalHits).value;
 
       const data = response.hits.hits
         .map((hit) => this.toProgram(hit._source))
@@ -179,18 +174,15 @@ export class ProgramSearchService implements OnModuleInit {
     }
   }
 
-  async removeProgram(id?: string): Promise<void> {
-    if (!id) return;
+  async removeProgram(id: string): Promise<void> {
     try {
       await this.esService.delete({
         index: this.indexName,
         id,
       });
     } catch (error) {
-      const statusCode = (error as { meta?: { statusCode?: number } })?.meta
-        ?.statusCode;
-      if (statusCode === 404) {
-        return;
+      if (error instanceof errors.ResponseError) {
+        if (error.statusCode === 404) return;
       }
       this.logger.error(`Failed to remove program ${id}`, error);
     }

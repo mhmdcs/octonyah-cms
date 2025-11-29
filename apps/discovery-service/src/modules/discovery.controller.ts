@@ -28,15 +28,6 @@ export class DiscoveryController {
     private readonly programIndexQueue: ProgramIndexQueueService,
   ) {}
 
-  /**
-   * GET /discovery/search
-   *
-   * Searches and filters programs based on query parameters.
-   * Supports text search, filtering by category/type/language, and pagination.
-   *
-   * @param searchDto - Search criteria and pagination parameters (from query string)
-   * @returns Search results with programs and pagination metadata
-   */
   @Get('search')
   @ApiOperation({
     summary: 'Search programs',
@@ -54,14 +45,6 @@ export class DiscoveryController {
     return this.discoveryService.searchPrograms(searchDto);
   }
 
-  /**
-   * GET /discovery/programs/:id
-   *
-   * Retrieves a specific program by its ID for public viewing.
-   *
-   * @param id - UUID of the program to retrieve
-   * @returns The program entity
-   */
   @Get('programs/:id')
   @ApiOperation({
     summary: 'Get a program by ID',
@@ -78,23 +61,13 @@ export class DiscoveryController {
     try {
       return await this.discoveryService.getProgram(id);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Program not found';
-      throw new HttpException(message, HttpStatus.NOT_FOUND);
+      if (error instanceof HttpException) {
+        throw error; 
+      }
+      throw new HttpException('Program not found', HttpStatus.NOT_FOUND);
     }
   }
 
-  /**
-   * GET /discovery/categories/:category
-   *
-   * Gets all programs in a specific category.
-   * Results are paginated and ordered by publication date (newest first).
-   *
-   * @param category - Category name to filter by
-   * @param page - Page number (default: 1)
-   * @param limit - Results per page (default: 20)
-   * @returns Search results with programs and pagination metadata
-   */
   @Get('categories/:category')
   @ApiOperation({
     summary: 'Get programs by category',
@@ -120,17 +93,6 @@ export class DiscoveryController {
     return this.discoveryService.getProgramsByCategory(category, page, limit);
   }
 
-  /**
-   * GET /discovery/types/:type
-   *
-   * Gets all programs of a specific type (video_podcast or documentary).
-   * Results are paginated and ordered by publication date (newest first).
-   *
-   * @param type - Program type to filter by
-   * @param page - Page number (default: 1)
-   * @param limit - Results per page (default: 20)
-   * @returns Search results with programs and pagination metadata
-   */
   @Get('types/:type')
   @ApiOperation({
     summary: 'Get programs by type',
@@ -158,12 +120,6 @@ export class DiscoveryController {
     return this.discoveryService.getProgramsByType(type, page, limit);
   }
 
-  /**
-   * POST /discovery/search/reindex
-   *
-   * Enqueues a background job to rebuild the entire search index.
-   * Intended for internal/operator use.
-   */
   @Post('search/reindex')
   @ApiOperation({
     summary: 'Enqueue a full search index rebuild',
