@@ -1,17 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Program, ProgramLanguage } from '@octonyah/shared-programs';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { UpdateProgramDto } from './dto/update-program.dto';
 import { ProgramEventsPublisher } from './program-events.publisher';
+import { StorageService } from '../../storage/storage.service';
 
 @Injectable()
 export class ProgramsService {
+  private readonly logger = new Logger(ProgramsService.name);
+
   constructor(
     @InjectRepository(Program)
     private readonly programRepository: Repository<Program>,
     private readonly programEventsPublisher: ProgramEventsPublisher,
+    private readonly storageService: StorageService,
   ) {}
 
   async create(createProgramDto: CreateProgramDto): Promise<Program> {
@@ -26,6 +30,8 @@ export class ProgramsService {
       popularityScore: createProgramDto.popularityScore ?? 0,
       // Convert date string to Date object
       publicationDate: new Date(createProgramDto.publicationDate),
+      videoUrl: createProgramDto.videoUrl,
+      thumbnailImageUrl: createProgramDto.thumbnailImageUrl,
     });
     const saved = await this.programRepository.save(program);
     this.programEventsPublisher.programCreated(saved);
@@ -51,6 +57,24 @@ export class ProgramsService {
   async update(id: string, updateProgramDto: UpdateProgramDto): Promise<Program> {
     const program = await this.findOne(id);
     
+    // Delete old video file if it's being replaced
+    if (updateProgramDto.videoUrl !== undefined && program.videoUrl && program.videoUrl !== updateProgramDto.videoUrl) {
+      try {
+        await this.storageService.deleteFile(program.videoUrl);
+      } catch (error) {
+        this.logger.warn(`Failed to delete old video file: ${program.videoUrl}`, error);
+      }
+    }
+    
+    // Delete old thumbnail file if it's being replaced
+    if (updateProgramDto.thumbnailImageUrl !== undefined && program.thumbnailImageUrl && program.thumbnailImageUrl !== updateProgramDto.thumbnailImageUrl) {
+      try {
+        await this.storageService.deleteFile(program.thumbnailImageUrl);
+      } catch (error) {
+        this.logger.warn(`Failed to delete old thumbnail file: ${program.thumbnailImageUrl}`, error);
+      }
+    }
+    
     const updateData: Partial<Program> = {};
     if (updateProgramDto.title !== undefined) updateData.title = updateProgramDto.title;
     if (updateProgramDto.description !== undefined) updateData.description = updateProgramDto.description;
@@ -61,6 +85,8 @@ export class ProgramsService {
     if (updateProgramDto.tags !== undefined) updateData.tags = this.normalizeTags(updateProgramDto.tags);
     if (updateProgramDto.popularityScore !== undefined) updateData.popularityScore = updateProgramDto.popularityScore;
     if (updateProgramDto.publicationDate !== undefined) updateData.publicationDate = new Date(updateProgramDto.publicationDate);
+    if (updateProgramDto.videoUrl !== undefined) updateData.videoUrl = updateProgramDto.videoUrl;
+    if (updateProgramDto.thumbnailImageUrl !== undefined) updateData.thumbnailImageUrl = updateProgramDto.thumbnailImageUrl;
 
     Object.assign(program, updateData);
     const updated = await this.programRepository.save(program);
@@ -70,8 +96,27 @@ export class ProgramsService {
 
   async remove(id: string): Promise<void> {
     const program = await this.findOne(id);
+    await this.deleteProgramMediaFiles(program);
     await this.programRepository.remove(program);
     this.programEventsPublisher.programDeleted({ id });
+  }
+
+  private async deleteProgramMediaFiles(program: Program): Promise<void> {
+    if (program.videoUrl) {
+      try {
+        await this.storageService.deleteFile(program.videoUrl);
+      } catch (error) {
+        this.logger.warn(`Failed to delete video file: ${program.videoUrl}`, error);
+      }
+    }
+
+    if (program.thumbnailImageUrl) {
+      try {
+        await this.storageService.deleteFile(program.thumbnailImageUrl);
+      } catch (error) {
+        this.logger.warn(`Failed to delete thumbnail file: ${program.thumbnailImageUrl}`, error);
+      }
+    }
   }
 
   private normalizeTags(tags?: string[]): string[] {

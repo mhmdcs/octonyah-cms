@@ -53,6 +53,12 @@ export class Program {
   @Column({ type: 'date' })
   publicationDate: Date;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  videoUrl?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  thumbnailImageUrl?: string;
+
   // Auto set timestamp thru TypeORM
   @CreateDateColumn()
   createdAt: Date;

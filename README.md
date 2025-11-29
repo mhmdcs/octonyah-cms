@@ -26,6 +26,9 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 ### Content Management System (CMS)
 - CRUD operations for programs (video podcasts and documentaries)
 - Metadata management (title, description, category, language, duration, publication date)
+- Media file management (video and thumbnail images) via MinIO/S3-compatible storage
+- File upload endpoints for videos and thumbnails
+- Automatic cleanup of media files when programs are deleted or updated
 - Input validation and error handling
 - RESTful API endpoints for frontend integration
 - Swagger documentation
@@ -57,6 +60,7 @@ Supporting infrastructure (local/dev via Docker Compose):
 - `rabbitmq` – async event bus between services
 - `redis` – cache backing the discovery service and transport for BullMQ queues
 - `elasticsearch` – search/read model optimized for full-text queries, filtering, autocomplete
+- `minio` – S3-compatible object storage for media files (videos and thumbnails)
 - `bullmq workers` – discovery-service background processors that rebuild the search index
 
 ## Inter-service Communication
@@ -82,6 +86,10 @@ Supporting infrastructure (local/dev via Docker Compose):
 
 ### Search & Read Models
 - **Elasticsearch** - Secondary index optimized for full-text search, filters, and high-concurrency read/query workloads
+
+### Object Storage
+- **MinIO** - AWS S3-compatible object storage for media files (videos and thumbnail images)
+- **AWS S3 SDK** - Client library for S3-compatible storage operations (upload, delete, signed URLs)
 
 ### Database & ORM
 - **PostgreSQL** - Reliable relational database, easy to run locally via Docker
@@ -149,6 +157,11 @@ The application uses environment variables for configuration. Edit the `.env` fi
 - `ELASTICSEARCH_NODE` - Elasticsearch node URL (default: `http://localhost:9200`)
 - `ELASTICSEARCH_USERNAME` / `ELASTICSEARCH_PASSWORD` - Optional basic auth credentials
 - `ELASTICSEARCH_INDEX` - Index name for programs (default: `programs`)
+- `S3_ENDPOINT` - MinIO/S3 endpoint URL (default: `http://localhost:9000`, use `http://minio:9000` in Docker)
+- `S3_ACCESS_KEY` - S3 access key (default: `minioadmin`)
+- `S3_SECRET_KEY` - S3 secret key (default: `minioadmin`)
+- `S3_BUCKET` - S3 bucket name for storing media files (default: `programs-media`)
+- `S3_REGION` - S3 region (default: `us-east-1`)
 - `NODE_ENV` - Environment mode (development/production)
 
 ## Running the Application
@@ -167,6 +180,7 @@ Exposed endpoints:
 - Discovery service → http://localhost:3001 (Swagger at `/api`)
 - RabbitMQ → AMQP `localhost:5672`, management UI `http://localhost:15672` (guest/guest)
 - Redis → `localhost:6379`
+- MinIO → API `http://localhost:9000`, Console `http://localhost:9001` (minioadmin/minioadmin)
 - BullMQ workers → run inside discovery-service container, exposed via logs/queues
 - Postgres → `localhost:5432` (credentials defined in `docker-compose.yml`)
 
@@ -212,7 +226,9 @@ Swagger UI provides:
 - `GET /cms/programs` - Get all programs
 - `GET /cms/programs/:id` - Get a program by ID
 - `PATCH /cms/programs/:id` - Update a program
-- `DELETE /cms/programs/:id` - Delete a program
+- `DELETE /cms/programs/:id` - Delete a program (also removes associated media files from storage)
+- `POST /cms/programs/upload/video` - Upload a video file (max 500MB, multipart/form-data)
+- `POST /cms/programs/upload/thumbnail` - Upload a thumbnail image (max 10MB, multipart/form-data)
 
 #### Discovery service (public)
 - Base URL: `http://localhost:${DISCOVERY_PORT}` (default `http://localhost:3001`)
@@ -237,6 +253,7 @@ Swagger UI provides:
 ```bash
 curl -X POST http://localhost:3000/cms/programs \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-jwt-token>" \
   -d '{
     "title": "أوكتو",
     "description": "برنامج ثماني-قصدي أوكتانيه",
@@ -244,9 +261,27 @@ curl -X POST http://localhost:3000/cms/programs \
     "type": "video_podcast",
     "language": "ar",
     "duration": 3600,
-    "publicationDate": "2024-01-15"
+    "publicationDate": "2024-01-15",
+    "videoUrl": "http://minio:9000/programs-media/videos/uuid.mp4",
+    "thumbnailImageUrl": "http://minio:9000/programs-media/thumbnails/uuid.jpg"
   }'
 ```
+
+**Upload a video file:**
+```bash
+curl -X POST http://localhost:3000/cms/programs/upload/video \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -F "file=@/path/to/video.mp4"
+```
+
+**Upload a thumbnail image:**
+```bash
+curl -X POST http://localhost:3000/cms/programs/upload/thumbnail \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -F "file=@/path/to/thumbnail.jpg"
+```
+
+The upload endpoints return a JSON response with the `url` field containing the full URL to the uploaded file, which can then be used in the `videoUrl` or `thumbnailImageUrl` fields when creating/updating programs.
 
 **Search programs (discovery service):**
 ```bash
@@ -264,6 +299,9 @@ apps/
 │       ├── app.controller.ts
 │       ├── app.module.ts
 │       ├── main.ts
+│       ├── storage/
+│       │   ├── storage.module.ts
+│       │   └── storage.service.ts
 │       └── modules/
 │           └── programs/
 │               ├── dto/
@@ -360,6 +398,14 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
 - Queue provides retryable, observable jobs for large reindex operations
 - Decouples RabbitMQ event handling from heavy index writes
 - Allows triggering reindexing via HTTP without locking the main request cycle
+
+### 7. MinIO Object Storage (AWS S3-compatible)
+- MinIO provides S3-compatible object storage for media files (videos and thumbnail images)
+- Files are stored in organized folders (`videos/` and `thumbnails/`) with UUID-based naming
+- Storage service automatically creates the bucket on application startup
+- Media files are automatically deleted when programs are removed or when URLs are updated
+- Supports both direct access URLs and signed URLs for secure, time-limited access
+- Can be replaced with AWS S3 or other S3-compatible services by updating environment variables
 
 ## License
 

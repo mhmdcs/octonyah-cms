@@ -9,9 +9,10 @@ import {
   ProgramEventsPublisher,
   PROGRAM_EVENTS_CLIENT,
 } from './program-events.publisher';
+import { StorageModule } from '../../storage/storage.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Program]), ConfigModule],
+  imports: [TypeOrmModule.forFeature([Program]), ConfigModule, StorageModule],
   controllers: [ProgramsController],
   providers: [
     ProgramsService,

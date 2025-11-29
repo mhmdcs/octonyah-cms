@@ -9,7 +9,13 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -17,6 +23,7 @@ import {
   ApiParam,
   ApiBody,
   ApiBearerAuth,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { ProgramsService } from './programs.service';
 import { CreateProgramDto } from './dto/create-program.dto';
@@ -24,6 +31,7 @@ import { UpdateProgramDto } from './dto/update-program.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { StorageService } from '../../storage/storage.service';
 
 
 @ApiTags('CMS Programs')
@@ -31,7 +39,10 @@ import { Roles } from '../../auth/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('cms/programs')
 export class ProgramsController {
-  constructor(private readonly programsService: ProgramsService) {}
+  constructor(
+    private readonly programsService: ProgramsService,
+    private readonly storageService: StorageService,
+  ) {}
 
   @Post()
   @Roles('admin', 'editor')
@@ -83,6 +94,70 @@ export class ProgramsController {
   @ApiResponse({ status: 404, description: 'Program not found' })
   remove(@Param('id') id: string) {
     return this.programsService.remove(id);
+  }
+
+  @Post('upload/video')
+  @Roles('admin', 'editor')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload a video file' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Video uploaded successfully' })
+  async uploadVideo(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 500 * 1024 * 1024 }), // 500MB
+          new FileTypeValidator({ fileType: /(video\/.*)/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    const url = await this.storageService.uploadFile(file, 'videos');
+    return { url };
+  }
+
+  @Post('upload/thumbnail')
+  @Roles('admin', 'editor')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload a thumbnail image' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Thumbnail uploaded successfully' })
+  async uploadThumbnail(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
+          new FileTypeValidator({ fileType: /(image\/.*)/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    const url = await this.storageService.uploadFile(file, 'thumbnails');
+    return { url };
   }
 }
 

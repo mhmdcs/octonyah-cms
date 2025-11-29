@@ -43,6 +43,20 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  minio:
+    image: minio/minio:latest
+    container_name: octonyah-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio_data:/data
+
   cms-service:
     build:
       context: .
@@ -52,6 +66,7 @@ services:
     depends_on:
       - postgres
       - rabbitmq
+      - minio
     environment:
       NODE_ENV: development
       CMS_PORT: 3000
@@ -64,6 +79,11 @@ services:
       RABBITMQ_URL: amqp://rabbitmq:5672
       RABBITMQ_QUEUE: program-events
       RABBITMQ_PREFETCH: 1
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET: programs-media
+      S3_REGION: us-east-1
     ports:
       - '3000:3000'
 
@@ -101,4 +121,5 @@ services:
 
 volumes:
   postgres_data:
+  minio_data:
 

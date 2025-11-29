@@ -50,5 +50,13 @@ export class CreateProgramDto {
   @IsInt()
   @Min(0)
   popularityScore?: number;
+
+  @IsOptional()
+  @IsString()
+  videoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  thumbnailImageUrl?: string;
 }
 
