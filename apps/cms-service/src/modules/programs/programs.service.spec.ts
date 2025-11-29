@@ -1,22 +1,18 @@
+// Programs Service Test Suite
+// Unit tests that verify that individual components work correctly in isolation
+
 /**
- * Programs Service Test Suite
- * 
- * This file contains unit tests for the ProgramsService class.
- * Unit tests verify that individual components work correctly in isolation.
- * 
  * Testing Strategy:
- * - Uses Jest testing framework (configured with NestJS)
- * - Mocks the TypeORM repository to avoid database dependencies
- * - Tests each service method independently
- * - Verifies both success and error scenarios
+ * - Mock the TypeORM repository to avoid database dependencies
+ * - Test each service method independently
+ * - Verify both success and error scenarios
  * 
  * Test Structure:
- * - beforeEach: Sets up test environment before each test
- * - describe blocks: Group related tests together
- * - it blocks: Individual test cases
- * - Mock functions: Simulate repository behavior without real database
+ * - beforeEach: sets up test environment before each test
+ * - describe blocks: group related tests together
+ * - it blocks: individual test cases
+ * - Mock functions: simulate repository behavior without real database
  */
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -25,10 +21,7 @@ import { NotFoundException } from '@nestjs/common';
 import { ProgramsService } from './programs.service';
 import { ProgramEventsPublisher } from './program-events.publisher';
 
-/**
- * Test suite for ProgramsService
- * Groups all tests related to the ProgramsService class
- */
+// Groups all tests related to the ProgramsService class
 describe('ProgramsService', () => {
   let service: ProgramsService;
   let repository: Repository<Program>;

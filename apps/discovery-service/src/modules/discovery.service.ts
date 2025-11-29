@@ -1,20 +1,3 @@
-/**
- * Discovery Service
- *
- * This file contains the business logic for the Discovery System.
- * It provides search and exploration functionality for programs,
- * allowing public users to find and browse content.
- *
- * The service:
- * - Performs text search across program titles and descriptions
- * - Filters programs by category, type, and language
- * - Implements pagination for efficient data retrieval
- * - Returns programs ordered by publication date (newest first)
- *
- * This service uses the ProgramsService to access program data,
- * maintaining separation of concerns between CMS and Discovery.
- */
-
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -37,19 +20,9 @@ export class DiscoveryService {
     private readonly programSearch: ProgramSearchService,
   ) {}
 
-  /**
-   * Searches and filters programs based on the provided criteria.
-   *
-   * Supports:
-   * - Text search in title and description
-   * - Filtering by category, type, and language
-   * - Pagination with configurable page size
-   *
-   * Results are ordered by publication date (newest first).
-   *
-   * @param searchDto - Search criteria and pagination parameters
-   * @returns Search results with programs and pagination metadata
-   */
+  // Text search in title and description, Filtering by category, type, and language, 
+  // Pagination with configurable page size
+  // Results ordered by publication date (newest first)
   async searchPrograms(
     searchDto: SearchProgramsDto,
   ): Promise<SearchResponseDto> {
@@ -101,16 +74,6 @@ export class DiscoveryService {
     return response;
   }
 
-  /**
-   * Gets a single program by ID for public viewing.
-   *
-   * This is a public endpoint that doesn't require authentication.
-   * It returns the same program data as the CMS, but through
-   * the discovery/public interface.
-   *
-   * @param id - UUID of the program to retrieve
-   * @returns The program entity
-   */
   async getProgram(id: string): Promise<Program> {
     const cacheKey = buildProgramCacheKey(id);
     const cached = await this.cache.get<Program>(cacheKey);
@@ -127,17 +90,9 @@ export class DiscoveryService {
     return program;
   }
 
-  /**
-   * Gets programs by category.
-   *
-   * Useful for browsing programs by category without text search.
-   * Results are paginated and ordered by publication date.
-   *
-   * @param category - Category name to filter by
-   * @param page - Page number (default: 1)
-   * @param limit - Results per page (default: 20)
-   * @returns Search results with programs and pagination metadata
-   */
+  // Gets programs by category
+  // Useful for browsing programs by category without text search
+  // Results are paginated and ordered by publication date
   async getProgramsByCategory(
     category: string,
     page: number = 1,
@@ -146,17 +101,8 @@ export class DiscoveryService {
     return this.searchPrograms({ category, page, limit });
   }
 
-  /**
-   * Gets programs by type (video_podcast or documentary).
-   *
-   * Useful for browsing programs by type.
-   * Results are paginated and ordered by publication date.
-   *
-   * @param type - Program type to filter by
-   * @param page - Page number (default: 1)
-   * @param limit - Results per page (default: 20)
-   * @returns Search results with programs and pagination metadata
-   */
+  // Gets programs by type (video_podcast or documentary)
+  // Useful for browsing programs by type, and results are paginated and ordered by publication date
   async getProgramsByType(
     type: string,
     page: number = 1,

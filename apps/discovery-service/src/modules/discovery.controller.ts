@@ -1,19 +1,3 @@
-/**
- * Discovery Controller
- *
- * This file defines the public-facing HTTP endpoints for the Discovery System.
- * These endpoints allow general users to search and explore programs stored in the CMS.
- *
- * This controller provides public API endpoints:
- * - GET /discovery/search      - Search programs with filters and pagination
- * - GET /discovery/programs/:id - Get a specific program by ID
- * - GET /discovery/categories/:category - Get programs by category
- * - GET /discovery/types/:type - Get programs by type
- *
- * All endpoints are public (no authentication required) and designed for
- * frontend integration. They include Swagger documentation for easy testing.
- */
-
 import {
   Controller,
   Get,
@@ -36,16 +20,9 @@ import { SearchResponseDto } from './dto/search-response.dto';
 import { Program } from '@octonyah/shared-programs';
 import { ProgramIndexQueueService } from '../jobs/program-index.queue.service';
 
-/**
- * Controller class for discovery/public HTTP endpoints.
- * All routes are prefixed with 'discovery'.
- */
 @ApiTags('Discovery')
 @Controller('discovery')
 export class DiscoveryController {
-  /**
-   * Constructor injects DiscoveryService to handle business logic.
-   */
   constructor(
     private readonly discoveryService: DiscoveryService,
     private readonly programIndexQueue: ProgramIndexQueueService,

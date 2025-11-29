@@ -1,20 +1,3 @@
-/**
- * Programs Controller
- * 
- * This file defines the HTTP endpoints (routes) for program management.
- * Controllers in NestJS handle incoming HTTP requests and return responses.
- * 
- * This controller provides RESTful API endpoints for CRUD operations:
- * - POST   /cms/programs      - Create a new program
- * - GET    /cms/programs      - Get all programs
- * - GET    /cms/programs/:id  - Get a specific program by ID
- * - PATCH  /cms/programs/:id  - Update a program
- * - DELETE /cms/programs/:id  - Delete a program
- * 
- * The controller delegates business logic to ProgramsService and handles
- * HTTP-specific concerns like status codes and request/response formatting.
- */
-
 import {
   Controller,
   Get,
@@ -42,18 +25,12 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
 
-/**
- * Controller class for program HTTP endpoints.
- * All routes are prefixed with 'cms/programs'.
- */
+
 @ApiTags('CMS Programs')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('cms/programs')
 export class ProgramsController {
-  /**
-   * Constructor injects ProgramsService to handle business logic.
-   */
   constructor(private readonly programsService: ProgramsService) {}
 
   /**
