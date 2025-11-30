@@ -343,6 +343,60 @@ curl "http://localhost:3001/discovery/search?q=technology&tags=innovation&tags=s
 
 ## Architecture
 
+### System Architecture Diagram
+
+```mermaid
+flowchart TD
+    %% Users
+    I((Admin/Editors)):::actor
+    U((Users)):::actor
+
+    %% CMS System
+    A[CMS Service<br/>Port 3000]:::service
+    B[(PostgreSQL<br/>Database)]:::database
+    M[MinIO<br/>Object Storage]:::storage
+    
+    I -->|create/update/delete| A
+    A -->|writes program data| B
+    A -->|uploads media files| M
+    A -->|publishes events| C
+
+    %% Event Bus
+    C[RabbitMQ<br/>Event Bus]:::queue
+    C -->|consumes events| D
+
+    %% Discovery Service
+    D[Discovery Service<br/>Port 3001]:::service
+    D -->|invalidates cache| E
+    D -->|enqueues jobs| E
+
+    %% Cache & Queue
+    E[Redis<br/>Cache & Queue]:::queue
+    E -->|consumes jobs| F
+
+    %% Background Worker
+    F[BullMQ Workers<br/>Background Service]:::worker
+    F -->|reads data| B
+    F -->|indexes data| G
+
+    %% Search Index
+    G[Elasticsearch<br/>Search Index]:::search
+    D -->|queries| G
+    D -->|reads cache| E
+
+    %% Discovery API
+    U -->|search/browse| D
+
+    %% Styling
+    classDef actor fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000
+    classDef service fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000
+    classDef database fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px,color:#000
+    classDef worker fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000
+    classDef queue fill:#fce4ec,stroke:#880e4f,stroke-width:2px,color:#000
+    classDef search fill:#e0f2f1,stroke:#004d40,stroke-width:2px,color:#000
+    classDef storage fill:#ede7f6,stroke:#311b92,stroke-width:2px,color:#000
+```
+
 ### Project Structure
 
 ```
