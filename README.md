@@ -46,13 +46,17 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 
 ## Service Layout
 
-This repository follows a monorepo layout with two microservices and one shared library:
+This repository follows a monorepo layout with two microservices and shared libraries:
 
 - `apps/cms-service` – Internal CMS microservice responsible for authoring, validating, and publishing programs.
 - `apps/discovery-service` – Public-facing microservice that exposes search/browse APIs for end users.
-- `libs/shared-programs` – Shared TypeORM entities, enums, and future cross-service contracts.
+- `libs/shared-programs` – Shared TypeORM entities, enums, and event contracts.
+- `libs/shared-config` – Shared infrastructure configuration (database, Swagger, validation).
+- `libs/shared-events` – RabbitMQ event system (publishers, listeners, configuration).
+- `libs/shared-cache` – Redis caching module and service.
+- `libs/shared-storage` – S3-compatible object storage module for media files.
 
-Each service has its own entry point (`main.ts`), module tree, Swagger document, and can be deployed/scaled independently. Shared code is imported through path aliases (`@octonyah/shared-programs`) to keep the services decoupled while avoiding duplication.
+Each service has its own entry point (`main.ts`), module tree, Swagger document, and can be deployed/scaled independently. Shared code is imported through path aliases (e.g., `@octonyah/shared-programs`, `@octonyah/shared-config`) to keep the services decoupled while avoiding duplication.
 
 Supporting infrastructure (local/dev via Docker Compose):
 
@@ -299,55 +303,140 @@ apps/
 │       ├── app.controller.ts
 │       ├── app.module.ts
 │       ├── main.ts
-│       ├── storage/
-│       │   ├── storage.module.ts
-│       │   └── storage.service.ts
+│       ├── auth/                          # Authentication & Authorization
+│       │   ├── auth.controller.ts
+│       │   ├── auth.module.ts
+│       │   ├── auth.service.ts
+│       │   ├── dto/
+│       │   │   └── login.dto.ts
+│       │   ├── guards/
+│       │   │   ├── jwt-auth.guard.ts
+│       │   │   └── roles.guard.ts
+│       │   ├── jwt-payload.interface.ts
+│       │   ├── jwt.strategy.ts
+│       │   └── roles.decorator.ts
 │       └── modules/
+│           ├── cms.module.ts
 │           └── programs/
 │               ├── dto/
 │               │   ├── create-program.dto.ts
 │               │   └── update-program.dto.ts
 │               ├── programs.controller.ts
 │               ├── programs.module.ts
-│               └── programs.service.ts
+│               ├── programs.service.ts
+│               └── programs.service.spec.ts
 └── discovery-service/
     └── src/
         ├── app.controller.ts
         ├── app.module.ts
         ├── main.ts
-        └── modules/
-            └── discovery.module.ts
-                ├── discovery.controller.ts
-                ├── discovery.service.ts
-                └── dto/
-                    ├── search-programs.dto.ts
-                    └── search-response.dto.ts
+        ├── jobs/                          # Background job processing
+        │   ├── jobs.module.ts
+        │   ├── program-index.processor.ts
+        │   ├── program-index.queue.service.ts
+        │   └── program-index.queue.ts
+        ├── modules/
+        │   ├── discovery.module.ts
+        │   ├── discovery.controller.ts
+        │   ├── discovery.service.ts
+        │   ├── program-events.listener.ts  # RabbitMQ event listener
+        │   └── dto/
+        │       ├── search-programs.dto.ts
+        │       └── search-response.dto.ts
+        └── search/                        # Elasticsearch integration
+            ├── search.module.ts
+            ├── program-search.service.ts
+            └── program-search.types.ts
 
 libs/
-└── shared-programs/            # Shared entities/enums reused by both services
+├── shared-programs/                       # Domain entities & events
+│   └── src/
+│       ├── entities/
+│       │   └── program.entity.ts
+│       ├── events/
+│       │   └── program-events.ts
+│       └── index.ts
+├── shared-config/                         # Infrastructure configuration
+│   └── src/
+│       ├── database/
+│       │   └── database.module.ts
+│       ├── bootstrap/
+│       │   ├── swagger-config.factory.ts
+│       │   └── validation-pipe.config.ts
+│       └── index.ts
+├── shared-events/                         # Event system (RabbitMQ)
+│   └── src/
+│       ├── rmq/
+│       │   └── rmq.module.ts
+│       ├── publisher/
+│       │   ├── event-publisher.service.ts
+│       │   └── program-events.publisher.ts
+│       ├── listener/
+│       │   └── event-listener.base.ts
+│       └── index.ts
+├── shared-cache/                          # Redis caching
+│   └── src/
+│       ├── redis-cache.module.ts
+│       ├── redis-cache.service.ts
+│       ├── cache.constants.ts
+│       └── index.ts
+└── shared-storage/                        # Object storage (S3/MinIO)
     └── src/
-        ├── entities/
-        │   └── program.entity.ts
+        ├── storage.module.ts
+        ├── storage.service.ts
         └── index.ts
 ```
 
 ### Modular Architecture
 
-Octonyah follows a **microservices architecture** layered on top of NestJS' modular pattern:
+Octonyah follows a **microservices architecture** layered on top of NestJS' modular pattern with shared libraries:
+
+#### Microservices
 
 1. **CMS microservice (`apps/cms-service`)** – Internal content management
    - Handles CRUD operations for programs
-   - Validates input data
-   - Manages program metadata and future editorial workflows
+   - JWT-based authentication with role-based access control (admin, editor)
+   - Validates input data using class-validator
+   - Manages program metadata and media files via shared storage library
+   - Publishes events to RabbitMQ when programs are created/updated/deleted
+   - Uses shared libraries: `shared-programs`, `shared-config`, `shared-events`, `shared-storage`
 
 2. **Discovery microservice (`apps/discovery-service`)** – Public search and exploration
-   - Provides search functionality
+   - Provides search functionality with full-text search via Elasticsearch
    - Implements filtering, pagination, and browse experiences
+   - Redis-backed caching with automatic invalidation via RabbitMQ events
+   - BullMQ-powered background jobs for Elasticsearch reindexing
    - Exposes only read APIs to keep the surface limited and cache-friendly
+   - Uses shared libraries: `shared-programs`, `shared-config`, `shared-events`, `shared-cache`
 
-3. **Shared Programs library (`libs/shared-programs`)**
-   - Hosts the `Program` entity/enums so both services stay in sync
-   - Future place for shared DTOs/messages/events
+#### Shared Libraries
+
+3. **Shared Programs (`libs/shared-programs`)**
+   - Hosts the `Program` TypeORM entity and enums so both services stay in sync
+   - Defines event contracts (`program.created`, `program.updated`, `program.deleted`)
+   - Single source of truth for domain models
+
+4. **Shared Config (`libs/shared-config`)**
+   - Centralized TypeORM database configuration
+   - Reusable Swagger configuration factory
+   - Shared ValidationPipe configuration
+   - Eliminates duplication across services
+
+5. **Shared Events (`libs/shared-events`)**
+   - RabbitMQ module configuration
+   - Event publisher service for publishing domain events
+   - Event listener base classes for consuming events
+   - Standardized event communication patterns
+
+6. **Shared Cache (`libs/shared-cache`)**
+   - Redis cache module and service
+   - Provides caching utilities with TTL support
+   - Used by discovery service for read-heavy endpoints
+
+7. **Shared Storage (`libs/shared-storage`)**
+   - S3-compatible object storage module (MinIO/AWS S3)
+   - Handles media file uploads, deletions, and URL generation
+   - Used by CMS service for video and thumbnail management
 
 ## System Design
 
