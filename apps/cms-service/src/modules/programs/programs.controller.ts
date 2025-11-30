@@ -31,7 +31,7 @@ import { UpdateProgramDto } from './dto/update-program.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
-import { StorageService } from '../../storage/storage.service';
+import { StorageService } from '@octonyah/shared-storage';
 
 
 @ApiTags('CMS Programs')

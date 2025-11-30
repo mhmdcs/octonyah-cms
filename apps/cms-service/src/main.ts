@@ -1,29 +1,22 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { createValidationPipe, setupSwagger } from '@octonyah/shared-config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+  app.useGlobalPipes(createValidationPipe());
 
-  const config = new DocumentBuilder()
-    .setTitle('Octonyah CMS Service')
-    .setDescription('Internal service for managing programs')
-    .setVersion('1.0')
-    .addTag('CMS Programs', 'Program management endpoints (internal)')
-    .addBearerAuth()
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  setupSwagger(app, {
+    title: 'Octonyah CMS Service',
+    description: 'Internal service for managing programs',
+    version: '1.0',
+    tags: [
+      { name: 'CMS Programs', description: 'Program management endpoints (internal)' },
+    ],
+    enableBearerAuth: true,
+    path: 'api',
+  });
 
   const port = process.env.CMS_PORT ?? process.env.PORT ?? 3000;
   await app.listen(port);

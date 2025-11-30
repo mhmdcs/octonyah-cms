@@ -19,7 +19,8 @@ import { Repository } from 'typeorm';
 import { Program, ProgramType, ProgramLanguage } from '@octonyah/shared-programs';
 import { NotFoundException } from '@nestjs/common';
 import { ProgramsService } from './programs.service';
-import { ProgramEventsPublisher } from './program-events.publisher';
+import { ProgramEventsPublisher } from '@octonyah/shared-events';
+import { StorageService } from '@octonyah/shared-storage';
 
 // Groups all tests related to the ProgramsService class
 describe('ProgramsService', () => {
@@ -59,6 +60,13 @@ describe('ProgramsService', () => {
             programCreated: jest.fn(),
             programUpdated: jest.fn(),
             programDeleted: jest.fn(),
+          },
+        },
+        {
+          provide: StorageService,
+          useValue: {
+            uploadFile: jest.fn(),
+            deleteFile: jest.fn(),
           },
         },
       ],

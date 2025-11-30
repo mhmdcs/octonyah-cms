@@ -47,6 +47,6 @@ lerna-debug.log*
 # Temporary files
 *.tmp
 *.temp
-
-# Cursor
 .cursor
+/ARCHITECTURE_IMPROVEMENTS.md
+/comprehensive-test.sh

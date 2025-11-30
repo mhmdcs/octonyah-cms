@@ -12,7 +12,15 @@
     "baseUrl": "./",
     "paths": {
       "@octonyah/shared-programs": ["libs/shared-programs/src"],
-      "@octonyah/shared-programs/*": ["libs/shared-programs/src/*"]
+      "@octonyah/shared-programs/*": ["libs/shared-programs/src/*"],
+      "@octonyah/shared-config": ["libs/shared-config/src"],
+      "@octonyah/shared-config/*": ["libs/shared-config/src/*"],
+      "@octonyah/shared-events": ["libs/shared-events/src"],
+      "@octonyah/shared-events/*": ["libs/shared-events/src/*"],
+      "@octonyah/shared-cache": ["libs/shared-cache/src"],
+      "@octonyah/shared-cache/*": ["libs/shared-cache/src/*"],
+      "@octonyah/shared-storage": ["libs/shared-storage/src"],
+      "@octonyah/shared-storage/*": ["libs/shared-storage/src/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

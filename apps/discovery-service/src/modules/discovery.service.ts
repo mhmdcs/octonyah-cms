@@ -4,11 +4,7 @@ import { Repository } from 'typeorm';
 import { Program } from '@octonyah/shared-programs';
 import { SearchProgramsDto } from './dto/search-programs.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
-import { RedisCacheService } from '../cache/redis-cache.service';
-import {
-  SEARCH_CACHE_PREFIX,
-  buildProgramCacheKey,
-} from '../cache/cache.constants';
+import { RedisCacheService, SEARCH_CACHE_PREFIX, buildProgramCacheKey } from '@octonyah/shared-cache';
 import { ProgramSearchService } from '../search/program-search.service';
 
 @Injectable()

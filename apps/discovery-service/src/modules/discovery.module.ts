@@ -4,7 +4,7 @@ import { DiscoveryService } from './discovery.service';
 import { DiscoveryController } from './discovery.controller';
 import { ProgramEventsListener } from './program-events.listener';
 import { Program } from '@octonyah/shared-programs';
-import { RedisCacheModule } from '../cache/redis-cache.module';
+import { RedisCacheModule } from '@octonyah/shared-cache';
 import { SearchModule } from '../search/search.module';
 import { JobsModule } from '../jobs/jobs.module';
 

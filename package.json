@@ -102,7 +102,11 @@
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^@octonyah/shared-programs(.*)$": "<rootDir>/libs/shared-programs/src$1"
+      "^@octonyah/shared-programs(.*)$": "<rootDir>/libs/shared-programs/src$1",
+      "^@octonyah/shared-config(.*)$": "<rootDir>/libs/shared-config/src$1",
+      "^@octonyah/shared-events(.*)$": "<rootDir>/libs/shared-events/src$1",
+      "^@octonyah/shared-cache(.*)$": "<rootDir>/libs/shared-cache/src$1",
+      "^@octonyah/shared-storage(.*)$": "<rootDir>/libs/shared-storage/src$1"
     }
   }
 }

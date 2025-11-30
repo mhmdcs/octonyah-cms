@@ -3,7 +3,13 @@
   "compilerOptions": {
     "outDir": "../../dist/apps/discovery-service"
   },
-  "include": ["src/**/*", "../../libs/shared-programs/src/**/*"],
+  "include": [
+    "src/**/*",
+    "../../libs/shared-programs/src/**/*",
+    "../../libs/shared-config/src/**/*",
+    "../../libs/shared-events/src/**/*",
+    "../../libs/shared-cache/src/**/*"
+  ],
   "exclude": ["node_modules", "dist", "**/*spec.ts"]
 }
 

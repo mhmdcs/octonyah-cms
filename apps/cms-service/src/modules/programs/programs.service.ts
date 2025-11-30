@@ -4,8 +4,8 @@ import { Repository } from 'typeorm';
 import { Program, ProgramLanguage } from '@octonyah/shared-programs';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { UpdateProgramDto } from './dto/update-program.dto';
-import { ProgramEventsPublisher } from './program-events.publisher';
-import { StorageService } from '../../storage/storage.service';
+import { ProgramEventsPublisher } from '@octonyah/shared-events';
+import { StorageService } from '@octonyah/shared-storage';
 
 @Injectable()
 export class ProgramsService {
