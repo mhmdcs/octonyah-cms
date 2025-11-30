@@ -33,6 +33,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - RESTful API endpoints for frontend integration
 - Swagger documentation
 - JWT auth + RBAC (admin, editor) for CMS-only endpoints
+- Health check endpoints for monitoring and orchestration
 
 ### Discovery System
 - Public API endpoints for searching programs and content
@@ -43,6 +44,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - Redis-backed cache with automatic invalidation via RabbitMQ events
 - Elasticsearch secondary index powering fast full-text search, filters, and sort options
 - BullMQ-powered background job workers that reindex Elasticsearch asynchronously
+- Health check endpoints monitoring database, Redis, and Elasticsearch connectivity
 
 ## Service Layout
 
@@ -105,6 +107,9 @@ Supporting infrastructure (local/dev via Docker Compose):
 
 ### API Documentation
 - **Swagger/OpenAPI** - Interactive API documentation
+
+### Monitoring & Health Checks
+- **@nestjs/terminus** - Health check framework for monitoring service dependencies
 
 ### Development Tools
 - **Jest** - Testing framework
@@ -243,6 +248,36 @@ Swagger UI provides:
 - `GET /discovery/types/:type` - Get programs by type
 - `POST /discovery/search/reindex` - Enqueue a BullMQ job to rebuild the Elasticsearch index (internal use)
 
+#### Health Check Endpoints
+Both services expose health check endpoints for monitoring and orchestration:
+
+- **CMS Service**: `GET /health` - Checks database connectivity
+- **Discovery Service**: `GET /health` - Checks database, Redis, and Elasticsearch connectivity
+
+Health check responses follow the standard format:
+```json
+{
+  "status": "ok",
+  "info": {
+    "database": { "status": "up" },
+    "redis": { "status": "up" },
+    "elasticsearch": { "status": "up" }
+  },
+  "error": {},
+  "details": {
+    "database": { "status": "up" },
+    "redis": { "status": "up" },
+    "elasticsearch": { "status": "up" }
+  }
+}
+```
+
+If any dependency is down, the `status` will be `"error"` and the failing service will appear in the `error` object with details about the failure. These endpoints are useful for:
+- Load balancer health checks
+- Kubernetes liveness/readiness probes
+- Monitoring and alerting systems
+- Container orchestration platforms
+
 ##### Search query parameters (`GET /discovery/search`)
 - `q` – Free-text query (title, description, tags) with fuzzy matching
 - `category`, `type`, `language` – Exact-match filters
@@ -250,6 +285,20 @@ Swagger UI provides:
 - `startDate` / `endDate` – Filter by publication date range (ISO strings)
 - `sort` – `relevance` (default), `date` (newest first), or `popular`
 - `page` / `limit` – Pagination controls (limit capped at 100)
+
+### Health Check Examples
+
+**Check CMS service health:**
+```bash
+curl http://localhost:3000/health
+```
+
+**Check Discovery service health:**
+```bash
+curl http://localhost:3001/health
+```
+
+The health endpoints return HTTP 200 when all dependencies are healthy, and HTTP 503 when any dependency is down.
 
 ### Example API Calls
 
@@ -315,6 +364,9 @@ apps/
 │       │   ├── jwt-payload.interface.ts
 │       │   ├── jwt.strategy.ts
 │       │   └── roles.decorator.ts
+│       ├── health/                        # Health check endpoints
+│       │   ├── health.controller.ts
+│       │   └── health.module.ts
 │       └── modules/
 │           ├── cms.module.ts
 │           └── programs/
@@ -330,6 +382,11 @@ apps/
         ├── app.controller.ts
         ├── app.module.ts
         ├── main.ts
+        ├── health/                        # Health check endpoints
+        │   ├── health.controller.ts
+        │   ├── health.module.ts
+        │   ├── redis-health.indicator.ts
+        │   └── elasticsearch-health.indicator.ts
         ├── jobs/                          # Background job processing
         │   ├── jobs.module.ts
         │   ├── program-index.processor.ts

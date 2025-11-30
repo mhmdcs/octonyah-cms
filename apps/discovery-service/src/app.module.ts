@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { DiscoveryModule } from './modules/discovery.module';
 import { BullModule } from '@nestjs/bullmq';
 import { DatabaseModule } from '@octonyah/shared-config';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { DatabaseModule } from '@octonyah/shared-config';
       }),
     }),
     DiscoveryModule,
+    HealthModule,
   ],
   controllers: [AppController],
 })

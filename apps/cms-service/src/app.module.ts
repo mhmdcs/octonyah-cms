@@ -5,6 +5,7 @@ import { ProgramsModule } from './modules/programs/programs.module';
 import { Program } from '@octonyah/shared-programs';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from '@octonyah/shared-config';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { DatabaseModule } from '@octonyah/shared-config';
     DatabaseModule.forRoot({ entities: [Program] }),
     ProgramsModule,
     AuthModule,
+    HealthModule,
   ],
   controllers: [AppController],
 })
