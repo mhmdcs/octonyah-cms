@@ -354,7 +354,7 @@ flowchart TD
     %% CMS System
     A[CMS Service<br/>Port 3000]:::service
     B[(PostgreSQL<br/>Database)]:::database
-    M[MinIO<br/>Object Storage]:::storage
+    M[MinIO / AWS S3<br/>Object Storage]:::storage
     
     I -->|create/update/delete| A
     A -->|writes program data| B
