@@ -1,9 +1,16 @@
 {
   "moduleFileExtensions": ["js", "json", "ts"],
-  "rootDir": ".",
+  "rootDir": "..",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@octonyah/shared-videos(.*)$": "<rootDir>/libs/shared-videos/src$1",
+    "^@octonyah/shared-config(.*)$": "<rootDir>/libs/shared-config/src$1",
+    "^@octonyah/shared-events(.*)$": "<rootDir>/libs/shared-events/src$1",
+    "^@octonyah/shared-cache(.*)$": "<rootDir>/libs/shared-cache/src$1",
+    "^@octonyah/shared-video-platforms(.*)$": "<rootDir>/libs/shared-video-platforms/src$1"
   }
 }

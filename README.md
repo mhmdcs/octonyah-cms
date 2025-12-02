@@ -12,6 +12,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - [Tech Stack](#tech-stack)
 - [Prerequisites](#prerequisites)
 - [Installation, Configuration, and Running the Application](#installation-configuration-and-running-the-application)
+- [Testing](#testing)
 - [API Documentation](#api-documentation)
 
 ## Features
@@ -406,7 +407,8 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
 - **@nestjs/terminus** - Health check framework for monitoring service dependencies
 
 ### Development Tools
-- **Jest** - Testing framework
+- **Jest** - Testing framework for unit and e2e tests
+- **Supertest** - HTTP assertion library for e2e API testing
 - **ESLint** - Code linting
 - **Prettier** - Code formatting
 
@@ -491,12 +493,52 @@ Exposed endpoints:
 - BullMQ workers → run inside discovery-service container, exposed via logs/queues
 - Postgres → `localhost:5432` (credentials defined in `docker-compose.yml`)
 
-### Other Commands
+## Testing
 
-- **Run tests**: `npm test`
-- **Run tests in watch mode**: `npm run test:watch`
-- **Run tests with coverage**: `npm run test:cov`
-- **Lint code**: `npm run lint`
+The project includes comprehensive test coverage with both **unit tests** and **end-to-end (e2e) tests**.
+
+### Unit Tests
+
+Unit tests test individual components (services, controllers, guards, etc.) in isolation with mocked dependencies.
+
+**Run unit tests:**
+```bash
+# Run all unit tests
+npm test
+
+# Run tests in watch mode (re-runs on file changes)
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:cov
+```
+
+**Test coverage includes:**
+- **CMS Service:** Auth service, auth controller, JWT strategy, roles guard, videos service, videos controller, health controller
+- **Discovery Service:** Discovery service, discovery controller, video search service, video index processor, cleanup processor, event listener, health indicators
+- **Shared Libraries:** Redis cache service, cache constants, YouTube provider, video platforms service, ISO8601 duration utils, event publisher, video events publisher, validation pipe config
+
+### End-to-End (E2E) Tests
+
+E2E tests verify the full HTTP request/response cycle using **Supertest**. They test API endpoints with the application bootstrapped, simulating real client requests.
+
+**Location:** `test/` directory with `.e2e-spec.ts` extension
+
+**Run e2e tests:**
+```bash
+npm run test:e2e
+```
+
+**E2E test coverage includes:**
+- **CMS Service E2E:** Authentication flow, JWT token generation, video CRUD operations, role-based access control, input validation
+- **Discovery Service E2E:** Search functionality, filtering, pagination, category/type browsing, reindex endpoint
+
+### Test Configuration
+
+| Test Type | Config File | Test Pattern | Libraries |
+|-----------|-------------|--------------|-----------|
+| Unit | `package.json` (jest section) | `*.spec.ts` | Jest |
+| E2E | `test/jest-e2e.json` | `*.e2e-spec.ts` | Jest + Supertest |
 
 ## API Documentation
 
