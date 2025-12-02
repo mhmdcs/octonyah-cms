@@ -15,63 +15,63 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { DiscoveryService } from './discovery.service';
-import { SearchProgramsDto } from './dto/search-programs.dto';
+import { SearchVideosDto } from './dto/search-videos.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
-import { Program } from '@octonyah/shared-programs';
-import { ProgramIndexQueueService } from '../jobs/program-index.queue.service';
+import { Video } from '@octonyah/shared-videos';
+import { VideoIndexQueueService } from '../jobs/video-index.queue.service';
 
 @ApiTags('Discovery')
 @Controller('discovery')
 export class DiscoveryController {
   constructor(
     private readonly discoveryService: DiscoveryService,
-    private readonly programIndexQueue: ProgramIndexQueueService,
+    private readonly videoIndexQueue: VideoIndexQueueService,
   ) {}
 
   @Get('search')
   @ApiOperation({
-    summary: 'Search programs',
+    summary: 'Search videos',
     description:
-      'Search and filter programs by text, category, type, language with pagination support',
+      'Search and filter videos by text, category, type, language with pagination support',
   })
   @ApiResponse({
     status: 200,
-    description: 'Search results with programs and pagination metadata',
+    description: 'Search results with videos and pagination metadata',
     type: SearchResponseDto,
   })
   async search(
-    @Query() searchDto: SearchProgramsDto,
+    @Query() searchDto: SearchVideosDto,
   ): Promise<SearchResponseDto> {
-    return this.discoveryService.searchPrograms(searchDto);
+    return this.discoveryService.searchVideos(searchDto);
   }
 
-  @Get('programs/:id')
+  @Get('videos/:id')
   @ApiOperation({
-    summary: 'Get a program by ID',
-    description: 'Retrieve a specific program by its UUID for public viewing',
+    summary: 'Get a video by ID',
+    description: 'Retrieve a specific video by its UUID for public viewing',
   })
-  @ApiParam({ name: 'id', description: 'Program UUID' })
+  @ApiParam({ name: 'id', description: 'Video UUID' })
   @ApiResponse({
     status: 200,
-    description: 'Program found',
-    type: Program,
+    description: 'Video found',
+    type: Video,
   })
-  @ApiResponse({ status: 404, description: 'Program not found' })
-  async getProgram(@Param('id') id: string): Promise<Program> {
+  @ApiResponse({ status: 404, description: 'Video not found' })
+  async getVideo(@Param('id') id: string): Promise<Video> {
     try {
-      return await this.discoveryService.getProgram(id);
+      return await this.discoveryService.getVideo(id);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error; 
       }
-      throw new HttpException('Program not found', HttpStatus.NOT_FOUND);
+      throw new HttpException('Video not found', HttpStatus.NOT_FOUND);
     }
   }
 
   @Get('categories/:category')
   @ApiOperation({
-    summary: 'Get programs by category',
-    description: 'Retrieve all programs in a specific category with pagination',
+    summary: 'Get videos by category',
+    description: 'Retrieve all videos in a specific category with pagination',
   })
   @ApiParam({
     name: 'category',
@@ -82,7 +82,7 @@ export class DiscoveryController {
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiResponse({
     status: 200,
-    description: 'Programs in the specified category',
+    description: 'Videos in the specified category',
     type: SearchResponseDto,
   })
   async getByCategory(
@@ -90,18 +90,18 @@ export class DiscoveryController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ): Promise<SearchResponseDto> {
-    return this.discoveryService.getProgramsByCategory(category, page, limit);
+    return this.discoveryService.getVideosByCategory(category, page, limit);
   }
 
   @Get('types/:type')
   @ApiOperation({
-    summary: 'Get programs by type',
+    summary: 'Get videos by type',
     description:
-      'Retrieve all programs of a specific type (video_podcast or documentary) with pagination',
+      'Retrieve all videos of a specific type (video_podcast or documentary) with pagination',
   })
   @ApiParam({
     name: 'type',
-    description: 'Program type',
+    description: 'Video type',
     enum: ['video_podcast', 'documentary'],
     example: 'video_podcast',
   })
@@ -109,7 +109,7 @@ export class DiscoveryController {
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiResponse({
     status: 200,
-    description: 'Programs of the specified type',
+    description: 'Videos of the specified type',
     type: SearchResponseDto,
   })
   async getByType(
@@ -117,7 +117,7 @@ export class DiscoveryController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ): Promise<SearchResponseDto> {
-    return this.discoveryService.getProgramsByType(type, page, limit);
+    return this.discoveryService.getVideosByType(type, page, limit);
   }
 
   @Post('search/reindex')
@@ -128,7 +128,7 @@ export class DiscoveryController {
   })
   @ApiResponse({ status: 202, description: 'Reindex job enqueued' })
   async enqueueReindex() {
-    await this.programIndexQueue.enqueueFullReindex();
+    await this.videoIndexQueue.enqueueFullReindex();
     return { status: 'scheduled' };
   }
 }

@@ -6,18 +6,18 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export enum ProgramType {
+export enum VideoType {
   VIDEO_PODCAST = 'video_podcast',
   DOCUMENTARY = 'documentary',
 }
 
-export enum ProgramLanguage {
+export enum VideoLanguage {
   ARABIC = 'ar',
   ENGLISH = 'en',
 }
 
-@Entity('programs')
-export class Program {
+@Entity('videos')
+export class Video {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -33,11 +33,11 @@ export class Program {
   category: string;
 
   @Column({ type: 'varchar', length: 50 })
-  type: ProgramType;
+  type: VideoType;
 
   // defaults to arabic? maybe rethink this later
-  @Column({ type: 'varchar', length: 10, default: ProgramLanguage.ARABIC })
-  language: ProgramLanguage;
+  @Column({ type: 'varchar', length: 10, default: VideoLanguage.ARABIC })
+  language: VideoLanguage;
 
   // tags/keywords for search and filtering
   @Column({ type: 'simple-array', nullable: true })

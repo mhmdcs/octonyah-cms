@@ -2,22 +2,22 @@ import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import {
-  PROGRAM_INDEX_QUEUE,
-  INDEX_PROGRAM_JOB,
+  VIDEO_INDEX_QUEUE,
+  INDEX_VIDEO_JOB,
   REINDEX_ALL_JOB,
-  REMOVE_PROGRAM_JOB,
-} from './program-index.queue';
+  REMOVE_VIDEO_JOB,
+} from './video-index.queue';
 
 @Injectable()
-export class ProgramIndexQueueService {
+export class VideoIndexQueueService {
   constructor(
-    @InjectQueue(PROGRAM_INDEX_QUEUE)
+    @InjectQueue(VIDEO_INDEX_QUEUE)
     private readonly queue: Queue,
   ) {}
 
-  async enqueueProgram(programId?: string) {
-    if (!programId) return;
-    await this.queue.add(INDEX_PROGRAM_JOB, { programId }, {
+  async enqueueVideo(videoId?: string) {
+    if (!videoId) return;
+    await this.queue.add(INDEX_VIDEO_JOB, { videoId }, {
       removeOnComplete: 50,
       removeOnFail: 50,
     });
@@ -32,9 +32,9 @@ export class ProgramIndexQueueService {
     );
   }
 
-  async enqueueRemoval(programId?: string) {
-    if (!programId) return;
-    await this.queue.add(REMOVE_PROGRAM_JOB, { programId }, {
+  async enqueueRemoval(videoId?: string) {
+    if (!videoId) return;
+    await this.queue.add(REMOVE_VIDEO_JOB, { videoId }, {
         removeOnComplete: 50,
         removeOnFail: 50,
       },

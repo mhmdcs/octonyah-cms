@@ -1,12 +1,12 @@
-import { ProgramLanguage, ProgramType } from '@octonyah/shared-programs';
+import { VideoLanguage, VideoType } from '@octonyah/shared-videos';
 
-export interface ProgramSearchDocument {
+export interface VideoSearchDocument {
   id: string;
   title: string;
   description?: string;
   category: string;
-  type: ProgramType;
-  language: ProgramLanguage;
+  type: VideoType;
+  language: VideoLanguage;
   tags: string[];
   duration: number;
   popularityScore: number;

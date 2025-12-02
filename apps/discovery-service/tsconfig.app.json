@@ -5,7 +5,7 @@
   },
   "include": [
     "src/**/*",
-    "../../libs/shared-programs/src/**/*",
+    "../../libs/shared-videos/src/**/*",
     "../../libs/shared-config/src/**/*",
     "../../libs/shared-events/src/**/*",
     "../../libs/shared-cache/src/**/*"

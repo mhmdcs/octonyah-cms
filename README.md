@@ -1,6 +1,6 @@
 # Octonyah CMS & Discovery System
 
-Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) is a two-component system built with NestJS and TypeScript for managing and discovering programs like video podcasts and documentaries, and potentially other forms of media. All integrated into a monorepo that hosts two independent microservices—`cms-service` and `discovery-service`—plus a shared library to reuse shared code and logic.
+Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) is a two-component system built with NestJS and TypeScript for managing and discovering videos like video podcasts and documentaries, and potentially other forms of media. All integrated into a monorepo that hosts two independent microservices—`cms-service` and `discovery-service`—plus a shared library to reuse shared code and logic.
 
 ## Table of Contents
 
@@ -17,11 +17,11 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 ## Features
 
 ### Content Management System (CMS)
-- CRUD operations for programs (video podcasts and documentaries)
+- CRUD operations for videos (video podcasts and documentaries)
 - Metadata management (title, description, category, language, duration, publication date)
 - Media file management (video and thumbnail images) via MinIO/S3-compatible storage
 - File upload endpoints for videos and thumbnails
-- Automatic cleanup of media files when programs are deleted or updated
+- Automatic cleanup of media files when videos are deleted or updated
 - Input validation and error handling
 - RESTful API endpoints for frontend integration
 - Swagger documentation
@@ -29,11 +29,11 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - Health check endpoints for monitoring and orchestration
 
 ### Discovery System
-- Public API endpoints for searching programs and content
+- Public API endpoints for searching videos and content
 - Search interface with full text search
 - Filtering by category, type, and language
 - Pagination support
-- Browse programs by category or type
+- Browse videos by category or type
 - Redis-backed cache with automatic invalidation via RabbitMQ events
 - Elasticsearch secondary index powering fast full-text search, filters, and sort options
 - BullMQ-powered background job workers that reindex Elasticsearch asynchronously
@@ -55,7 +55,7 @@ flowchart TD
     M[MinIO / AWS S3<br/>Object Storage]:::storage
     
     I -->|create/update/delete| A
-    A -->|writes program data| B
+    A -->|writes video data| B
     A -->|uploads media files| M
     A -->|publishes events| C
 
@@ -126,11 +126,11 @@ flowchart TD
 
 ### 5. Redis Cache for Discovery
 
-- Cache read-heavy discovery endpoints (search + program detail) in Redis with TTL and invalidate via CMS events.
+- Cache read-heavy discovery endpoints (search + video detail) in Redis with TTL and invalidate via CMS events.
 - Reduces load on Postgres when discovery traffic spikes
 - Keeps cache warm for the most common queries
 - TTL ensures stale data eventually expires even if an event is missed
-- CMS-driven events purge stale keys immediately (program-level + all search keys)
+- CMS-driven events purge stale keys immediately (video-level + all search keys)
 
 ### 6. Elasticsearch as the Read Model
 - Discovery search is delegated to Elasticsearch while PostgreSQL remains the write model.
@@ -149,7 +149,7 @@ flowchart TD
 - MinIO provides S3-compatible object storage for media files (videos and thumbnail images)
 - Files are stored in organized folders (`videos/` and `thumbnails/`) with UUID-based naming
 - Storage service automatically creates the bucket on application startup
-- Media files are automatically deleted when programs are removed or when URLs are updated
+- Media files are automatically deleted when videos are removed or when URLs are updated
 - Supports both direct access URLs and signed URLs for secure, time-limited access
 - Can be replaced with AWS S3 or other S3-compatible services by updating environment variables
 
@@ -157,19 +157,19 @@ flowchart TD
 
 This repository follows a monorepo layout with two microservices and shared libraries:
 
-- `apps/cms-service` – Internal CMS microservice responsible for authoring, validating, and publishing programs.
+- `apps/cms-service` – Internal CMS microservice responsible for authoring, validating, and publishing videos.
 - `apps/discovery-service` – Public-facing microservice that exposes search/browse APIs for end users.
-- `libs/shared-programs` – Shared TypeORM entities, enums, and event contracts.
+- `libs/shared-videos` – Shared TypeORM entities, enums, and event contracts.
 - `libs/shared-config` – Shared infrastructure configuration (database, Swagger, validation).
 - `libs/shared-events` – RabbitMQ event system (publishers, listeners, configuration).
 - `libs/shared-cache` – Redis caching module and service.
 - `libs/shared-storage` – S3-compatible object storage module for media files.
 
-Each service has its own entry point (`main.ts`), module tree, Swagger document, and can be deployed/scaled independently. Shared code is imported through path aliases (e.g., `@octonyah/shared-programs`, `@octonyah/shared-config`) to keep the services decoupled while avoiding duplication.
+Each service has its own entry point (`main.ts`), module tree, Swagger document, and can be deployed/scaled independently. Shared code is imported through path aliases (e.g., `@octonyah/shared-videos`, `@octonyah/shared-config`) to keep the services decoupled while avoiding duplication.
 
 Supporting infrastructure (local/dev via Docker Compose):
 
-- `postgres` – canonical system of record for programs
+- `postgres` – canonical system of record for videos
 - `rabbitmq` – async event bus between services
 - `redis` – cache backing the discovery service and transport for BullMQ queues
 - `elasticsearch` – search/read model optimized for full-text queries, filtering, autocomplete
@@ -178,9 +178,9 @@ Supporting infrastructure (local/dev via Docker Compose):
 
 ## Inter-service Communication
 
-- **Asynchronous messaging**: CMS publishes RabbitMQ events (`program.created`, `program.updated`, `program.deleted`) whenever content changes. Discovery subscribes to the same queue using NestJS’s RMQ transport, enabling cache invalidation, search-index refreshes, analytics fan-out, etc.
-- **Shared contracts**: Event names and payload contracts live in `libs/shared-programs`, ensuring publishers and consumers stay aligned without tight coupling.
-- **Caching + invalidation**: Discovery caches read-heavy endpoints (individual program fetch + search queries) in Redis with a configurable TTL. CMS emits events, and the discovery service invalidates affected cache keys immediately (program-specific keys + all search-result caches), keeping cached data fresh without synchronous coordination.
+- **Asynchronous messaging**: CMS publishes RabbitMQ events (`video.created`, `video.updated`, `video.deleted`) whenever content changes. Discovery subscribes to the same queue using NestJS's RMQ transport, enabling cache invalidation, search-index refreshes, analytics fan-out, etc.
+- **Shared contracts**: Event names and payload contracts live in `libs/shared-videos`, ensuring publishers and consumers stay aligned without tight coupling.
+- **Caching + invalidation**: Discovery caches read-heavy endpoints (individual video fetch + search queries) in Redis with a configurable TTL. CMS emits events, and the discovery service invalidates affected cache keys immediately (video-specific keys + all search-result caches), keeping cached data fresh without synchronous coordination.
 - **Elasticsearch read model**: Discovery maintains a secondary search index that is updated asynchronously from CMS events and BullMQ worker jobs, allowing fast full-text search, filtering, and sorting without hammering Postgres.
 - **Scalable & Future-ready**: Additional consumers (Redis cache warmers, BullMQ queues, analytics services) can subscribe to the same events without modifying the core services.
 
@@ -210,14 +210,14 @@ apps/
 │       │   └── health.module.ts
 │       └── modules/
 │           ├── cms.module.ts
-│           └── programs/
+│           └── videos/
 │               ├── dto/
-│               │   ├── create-program.dto.ts
-│               │   └── update-program.dto.ts
-│               ├── programs.controller.ts
-│               ├── programs.module.ts
-│               ├── programs.service.ts
-│               └── programs.service.spec.ts
+│               │   ├── create-video.dto.ts
+│               │   └── update-video.dto.ts
+│               ├── videos.controller.ts
+│               ├── videos.module.ts
+│               ├── videos.service.ts
+│               └── videos.service.spec.ts
 └── discovery-service/
     └── src/
         ├── app.controller.ts
@@ -230,29 +230,29 @@ apps/
         │   └── elasticsearch-health.indicator.ts
         ├── jobs/                          # Background job processing
         │   ├── jobs.module.ts
-        │   ├── program-index.processor.ts
-        │   ├── program-index.queue.service.ts
-        │   └── program-index.queue.ts
+        │   ├── video-index.processor.ts
+        │   ├── video-index.queue.service.ts
+        │   └── video-index.queue.ts
         ├── modules/
         │   ├── discovery.module.ts
         │   ├── discovery.controller.ts
         │   ├── discovery.service.ts
-        │   ├── program-events.listener.ts  # RabbitMQ event listener
+        │   ├── video-events.listener.ts  # RabbitMQ event listener
         │   └── dto/
-        │       ├── search-programs.dto.ts
+        │       ├── search-videos.dto.ts
         │       └── search-response.dto.ts
         └── search/                        # Elasticsearch integration
             ├── search.module.ts
-            ├── program-search.service.ts
-            └── program-search.types.ts
+            ├── video-search.service.ts
+            └── video-search.types.ts
 
 libs/
-├── shared-programs/                       # Domain entities & events
+├── shared-videos/                       # Domain entities & events
 │   └── src/
 │       ├── entities/
-│       │   └── program.entity.ts
+│       │   └── video.entity.ts
 │       ├── events/
-│       │   └── program-events.ts
+│       │   └── video-events.ts
 │       └── index.ts
 ├── shared-config/                         # Infrastructure configuration
 │   └── src/
@@ -268,7 +268,7 @@ libs/
 │       │   └── rmq.module.ts
 │       ├── publisher/
 │       │   ├── event-publisher.service.ts
-│       │   └── program-events.publisher.ts
+│       │   └── video-events.publisher.ts
 │       ├── listener/
 │       │   └── event-listener.base.ts
 │       └── index.ts
@@ -292,12 +292,12 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
 #### Microservices
 
 1. **CMS microservice (`apps/cms-service`)** – Internal content management
-   - Handles CRUD operations for programs
+   - Handles CRUD operations for videos
    - JWT-based authentication with role-based access control (admin, editor)
    - Validates input data using class-validator
-   - Manages program metadata and media files via shared storage library
-   - Publishes events to RabbitMQ when programs are created/updated/deleted
-   - Uses shared libraries: `shared-programs`, `shared-config`, `shared-events`, `shared-storage`
+   - Manages video metadata and media files via shared storage library
+   - Publishes events to RabbitMQ when videos are created/updated/deleted
+   - Uses shared libraries: `shared-videos`, `shared-config`, `shared-events`, `shared-storage`
 
 2. **Discovery microservice (`apps/discovery-service`)** – Public search and exploration
    - Provides search functionality with full-text search via Elasticsearch
@@ -305,13 +305,13 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
    - Redis-backed caching with automatic invalidation via RabbitMQ events
    - BullMQ-powered background jobs for Elasticsearch reindexing
    - Exposes only read APIs to keep the surface limited and cache-friendly
-   - Uses shared libraries: `shared-programs`, `shared-config`, `shared-events`, `shared-cache`
+   - Uses shared libraries: `shared-videos`, `shared-config`, `shared-events`, `shared-cache`
 
 #### Shared Libraries
 
-3. **Shared Programs (`libs/shared-programs`)**
-   - Hosts the `Program` TypeORM entity and enums so both services stay in sync
-   - Defines event contracts (`program.created`, `program.updated`, `program.deleted`)
+3. **Shared Videos (`libs/shared-videos`)**
+   - Hosts the `Video` TypeORM entity and enums so both services stay in sync
+   - Defines event contracts (`video.created`, `video.updated`, `video.deleted`)
    - Single source of truth for domain models
 
 4. **Shared Config (`libs/shared-config`)**
@@ -416,17 +416,17 @@ The application uses environment variables for configuration. Edit the `.env` fi
 - `DB_USERNAME` / `DB_PASSWORD` - PostgreSQL credentials
 - `DB_DATABASE` - PostgreSQL database name (default: octonyah)
 - `RABBITMQ_URL` - Connection string for RabbitMQ (e.g., `amqp://guest:guest@localhost:5672`)
-- `RABBITMQ_QUEUE` - Queue name for program events (default: `program-events`)
+- `RABBITMQ_QUEUE` - Queue name for video events (default: `video-events`)
 - `RABBITMQ_PREFETCH` - Prefetch count for consumers (default: `1`)
 - `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` - Redis connection settings (host defaults to `localhost`)
 - `REDIS_TTL_SECONDS` - TTL for cached items (default: `300`)
 - `ELASTICSEARCH_NODE` - Elasticsearch node URL (default: `http://localhost:9200`)
 - `ELASTICSEARCH_USERNAME` / `ELASTICSEARCH_PASSWORD` - Optional basic auth credentials
-- `ELASTICSEARCH_INDEX` - Index name for programs (default: `programs`)
+- `ELASTICSEARCH_INDEX` - Index name for videos (default: `videos`)
 - `S3_ENDPOINT` - MinIO/S3 endpoint URL (default: `http://localhost:9000`, use `http://minio:9000` in Docker)
 - `S3_ACCESS_KEY` - S3 access key (default: `minioadmin`)
 - `S3_SECRET_KEY` - S3 secret key (default: `minioadmin`)
-- `S3_BUCKET` - S3 bucket name for storing media files (default: `programs-media`)
+- `S3_BUCKET` - S3 bucket name for storing media files (default: `videos-media`)
 - `S3_REGION` - S3 region (default: `us-east-1`)
 - `NODE_ENV` - Environment mode (development/production)
 
@@ -486,21 +486,21 @@ Swagger UI provides:
 #### CMS service (internal)
 - Base URL: `http://localhost:${CMS_PORT}` (default `http://localhost:3000`)
 - `GET /` - Hello World endpoint for testing
-- `POST /cms/programs` - Create a new program
-- `GET /cms/programs` - Get all programs
-- `GET /cms/programs/:id` - Get a program by ID
-- `PATCH /cms/programs/:id` - Update a program
-- `DELETE /cms/programs/:id` - Delete a program (also removes associated media files from storage)
-- `POST /cms/programs/upload/video` - Upload a video file (max 500MB, multipart/form-data)
-- `POST /cms/programs/upload/thumbnail` - Upload a thumbnail image (max 10MB, multipart/form-data)
+- `POST /cms/videos` - Create a new video
+- `GET /cms/videos` - Get all videos
+- `GET /cms/videos/:id` - Get a video by ID
+- `PATCH /cms/videos/:id` - Update a video
+- `DELETE /cms/videos/:id` - Delete a video (also removes associated media files from storage)
+- `POST /cms/videos/upload/video` - Upload a video file (max 500MB, multipart/form-data)
+- `POST /cms/videos/upload/thumbnail` - Upload a thumbnail image (max 10MB, multipart/form-data)
 
 #### Discovery service (public)
 - Base URL: `http://localhost:${DISCOVERY_PORT}` (default `http://localhost:3001`)
 - `GET /` - Hello endpoint for sanity checks
-- `GET /discovery/search` - Search programs with filters and pagination
-- `GET /discovery/programs/:id` - Get a program by ID (public)
-- `GET /discovery/categories/:category` - Get programs by category
-- `GET /discovery/types/:type` - Get programs by type
+- `GET /discovery/search` - Search videos with filters and pagination
+- `GET /discovery/videos/:id` - Get a video by ID (public)
+- `GET /discovery/categories/:category` - Get videos by category
+- `GET /discovery/types/:type` - Get videos by type
 - `POST /discovery/search/reindex` - Enqueue a BullMQ job to rebuild the Elasticsearch index (internal use)
 
 #### Health Check Endpoints
@@ -557,9 +557,9 @@ The health endpoints return HTTP 200 when all dependencies are healthy, and HTTP
 
 ### Example API Calls
 
-**Create a program:**
+**Create a video:**
 ```bash
-curl -X POST http://localhost:3000/cms/programs \
+curl -X POST http://localhost:3000/cms/videos \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <your-jwt-token>" \
   -d '{
@@ -570,28 +570,28 @@ curl -X POST http://localhost:3000/cms/programs \
     "language": "ar",
     "duration": 3600,
     "publicationDate": "2024-01-15",
-    "videoUrl": "http://minio:9000/programs-media/videos/uuid.mp4",
-    "thumbnailImageUrl": "http://minio:9000/programs-media/thumbnails/uuid.jpg"
+    "videoUrl": "http://minio:9000/videos-media/videos/uuid.mp4",
+    "thumbnailImageUrl": "http://minio:9000/videos-media/thumbnails/uuid.jpg"
   }'
 ```
 
 **Upload a video file:**
 ```bash
-curl -X POST http://localhost:3000/cms/programs/upload/video \
+curl -X POST http://localhost:3000/cms/videos/upload/video \
   -H "Authorization: Bearer <your-jwt-token>" \
   -F "file=@/path/to/video.mp4"
 ```
 
 **Upload a thumbnail image:**
 ```bash
-curl -X POST http://localhost:3000/cms/programs/upload/thumbnail \
+curl -X POST http://localhost:3000/cms/videos/upload/thumbnail \
   -H "Authorization: Bearer <your-jwt-token>" \
   -F "file=@/path/to/thumbnail.jpg"
 ```
 
-The upload endpoints return a JSON response with the `url` field containing the full URL to the uploaded file, which can then be used in the `videoUrl` or `thumbnailImageUrl` fields when creating/updating programs.
+The upload endpoints return a JSON response with the `url` field containing the full URL to the uploaded file, which can then be used in the `videoUrl` or `thumbnailImageUrl` fields when creating/updating videos.
 
-**Search programs (discovery service):**
+**Search videos (discovery service):**
 ```bash
 curl "http://localhost:3001/discovery/search?q=technology&tags=innovation&tags=startup&sort=date&limit=10"
 ```

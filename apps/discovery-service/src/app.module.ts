@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { Program } from '@octonyah/shared-programs';
+import { Video } from '@octonyah/shared-videos';
 import { AppController } from './app.controller';
 import { DiscoveryModule } from './modules/discovery.module';
 import { BullModule } from '@nestjs/bullmq';
@@ -10,7 +10,7 @@ import { HealthModule } from './health/health.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    DatabaseModule.forRoot({ entities: [Program] }),
+    DatabaseModule.forRoot({ entities: [Video] }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

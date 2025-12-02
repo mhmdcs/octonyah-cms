@@ -11,11 +11,11 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ProgramType, ProgramLanguage } from '@octonyah/shared-programs';
+import { VideoType, VideoLanguage } from '@octonyah/shared-videos';
 
-export class SearchProgramsDto {
+export class SearchVideosDto {
   // Text search query - searches in title and description.
-  // Optional - if not provided, returns all programs matching other filters
+  // Optional - if not provided, returns all videos matching other filters
   @ApiPropertyOptional({
     description: 'Search query for title and description',
     example: 'technology',
@@ -24,7 +24,7 @@ export class SearchProgramsDto {
   @IsString()
   q?: string;
 
-  // Filter by program category. if not provided, includes all categories.
+  // Filter by video category. if not provided, includes all categories.
   @ApiPropertyOptional({
     description: 'Filter by category',
     example: 'Technology',
@@ -33,25 +33,25 @@ export class SearchProgramsDto {
   @IsString()
   category?: string;
 
-  // Filter by program type (video_podcast or documentary), if not provided, includes all types
+  // Filter by video type (video_podcast or documentary), if not provided, includes all types
   @ApiPropertyOptional({
-    description: 'Filter by program type',
-    enum: ProgramType,
-    example: ProgramType.VIDEO_PODCAST,
+    description: 'Filter by video type',
+    enum: VideoType,
+    example: VideoType.VIDEO_PODCAST,
   })
   @IsOptional()
-  @IsEnum(ProgramType)
-  type?: ProgramType;
+  @IsEnum(VideoType)
+  type?: VideoType;
 
-  // Filter by program language (ar or en) if not provided, includes all languages
+  // Filter by video language (ar or en) if not provided, includes all languages
   @ApiPropertyOptional({
     description: 'Filter by language',
-    enum: ProgramLanguage,
-    example: ProgramLanguage.ARABIC,
+    enum: VideoLanguage,
+    example: VideoLanguage.ARABIC,
   })
   @IsOptional()
-  @IsEnum(ProgramLanguage)
-  language?: ProgramLanguage;
+  @IsEnum(VideoLanguage)
+  language?: VideoLanguage;
 
   @ApiPropertyOptional({
     description: 'Filter by tags. Provide multiple tags by repeating the query param.',
@@ -105,7 +105,7 @@ export class SearchProgramsDto {
   @IsIn(['relevance', 'date', 'popular'])
   sort?: 'relevance' | 'date' | 'popular';
 
-  // Only return programs published on or after this date (ISO string)
+  // Only return videos published on or after this date (ISO string)
   @ApiPropertyOptional({
     description: 'Filter by publication date (start). ISO string.',
     example: '2024-01-01',
@@ -114,7 +114,7 @@ export class SearchProgramsDto {
   @IsDateString()
   startDate?: string;
 
-  // Only return programs published on or before this date (ISO string)
+  // Only return videos published on or before this date (ISO string)
   @ApiPropertyOptional({
     description: 'Filter by publication date (end). ISO string.',
     example: '2024-12-31',

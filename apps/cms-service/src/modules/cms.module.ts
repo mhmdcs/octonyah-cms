@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ProgramsModule } from './programs/programs.module';
+import { VideosModule } from './videos/videos.module';
 
 @Module({
-  imports: [ProgramsModule],
-  exports: [ProgramsModule],
+  imports: [VideosModule],
+  exports: [VideosModule],
 })
 export class CmsModule {}
 

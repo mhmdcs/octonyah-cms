@@ -28,13 +28,13 @@
         "webpack": false
       }
     },
-    "shared-programs": {
+    "shared-videos": {
       "type": "library",
-      "root": "libs/shared-programs",
-      "sourceRoot": "libs/shared-programs/src",
+      "root": "libs/shared-videos",
+      "sourceRoot": "libs/shared-videos/src",
       "entryFile": "src/index",
       "compilerOptions": {
-        "tsConfigPath": "libs/shared-programs/tsconfig.lib.json"
+        "tsConfigPath": "libs/shared-videos/tsconfig.lib.json"
       }
     },
     "shared-config": {

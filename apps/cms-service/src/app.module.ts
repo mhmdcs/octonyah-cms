@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
-import { ProgramsModule } from './modules/programs/programs.module';
-import { Program } from '@octonyah/shared-programs';
+import { VideosModule } from './modules/videos/videos.module';
+import { Video } from '@octonyah/shared-videos';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from '@octonyah/shared-config';
 import { HealthModule } from './health/health.module';
@@ -10,8 +10,8 @@ import { HealthModule } from './health/health.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    DatabaseModule.forRoot({ entities: [Program] }),
-    ProgramsModule,
+    DatabaseModule.forRoot({ entities: [Video] }),
+    VideosModule,
     AuthModule,
     HealthModule,
   ],

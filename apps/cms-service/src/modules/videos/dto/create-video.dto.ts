@@ -8,10 +8,10 @@ import {
   Min,
   IsArray,
 } from 'class-validator';
-import { ProgramType, ProgramLanguage } from '@octonyah/shared-programs';
+import { VideoType, VideoLanguage } from '@octonyah/shared-videos';
 
 
-export class CreateProgramDto {
+export class CreateVideoDto {
   @IsString()
   @IsNotEmpty()
   title: string;
@@ -24,12 +24,12 @@ export class CreateProgramDto {
   @IsNotEmpty()
   category: string;
 
-  @IsEnum(ProgramType)
-  type: ProgramType;
+  @IsEnum(VideoType)
+  type: VideoType;
 
-  @IsEnum(ProgramLanguage)
+  @IsEnum(VideoLanguage)
   @IsOptional()
-  language?: ProgramLanguage;
+  language?: VideoLanguage;
 
   @IsInt()
   @Min(1)

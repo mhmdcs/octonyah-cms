@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 
 export interface EventPayload<T = unknown> {
-  program: T;
+  video: T;
 }
 
 @Injectable()

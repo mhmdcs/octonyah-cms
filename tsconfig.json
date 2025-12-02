@@ -11,8 +11,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@octonyah/shared-programs": ["libs/shared-programs/src"],
-      "@octonyah/shared-programs/*": ["libs/shared-programs/src/*"],
+      "@octonyah/shared-videos": ["libs/shared-videos/src"],
+      "@octonyah/shared-videos/*": ["libs/shared-videos/src/*"],
       "@octonyah/shared-config": ["libs/shared-config/src"],
       "@octonyah/shared-config/*": ["libs/shared-config/src/*"],
       "@octonyah/shared-events": ["libs/shared-events/src"],

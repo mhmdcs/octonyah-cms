@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ElasticsearchModule } from '@nestjs/elasticsearch';
-import { ProgramSearchService } from './program-search.service';
+import { VideoSearchService } from './video-search.service';
 
 @Module({
   imports: [
@@ -26,8 +26,8 @@ import { ProgramSearchService } from './program-search.service';
       },
     }),
   ],
-  providers: [ProgramSearchService],
-  exports: [ProgramSearchService],
+  providers: [VideoSearchService],
+  exports: [VideoSearchService],
 })
 export class SearchModule {}
 

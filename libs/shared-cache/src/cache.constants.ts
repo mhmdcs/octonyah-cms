@@ -1,6 +1,6 @@
-export const PROGRAM_CACHE_PREFIX = 'discovery:program';
+export const VIDEO_CACHE_PREFIX = 'discovery:video';
 export const SEARCH_CACHE_PREFIX = 'discovery:search';
 
-export const buildProgramCacheKey = (programId: string) =>
-  `${PROGRAM_CACHE_PREFIX}:${programId}`;
+export const buildVideoCacheKey = (videoId: string) =>
+  `${VIDEO_CACHE_PREFIX}:${videoId}`;
 

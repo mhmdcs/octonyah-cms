@@ -2,19 +2,19 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import {
-  Program,
-  ProgramLanguage,
-  ProgramType,
-} from '@octonyah/shared-programs';
-import { SearchProgramsDto } from '../modules/dto/search-programs.dto';
+  Video,
+  VideoLanguage,
+  VideoType,
+} from '@octonyah/shared-videos';
+import { SearchVideosDto } from '../modules/dto/search-videos.dto';
 import { SearchResponseDto } from '../modules/dto/search-response.dto';
-import { ProgramSearchDocument } from './program-search.types';
+import { VideoSearchDocument } from './video-search.types';
 import { SearchTotalHits } from '@elastic/elasticsearch/lib/api/types';
 import { errors } from '@elastic/elasticsearch';
 
 @Injectable()
-export class ProgramSearchService implements OnModuleInit {
-  private readonly logger = new Logger(ProgramSearchService.name);
+export class VideoSearchService implements OnModuleInit {
+  private readonly logger = new Logger(VideoSearchService.name);
   private readonly indexName: string;
 
   constructor(
@@ -23,7 +23,7 @@ export class ProgramSearchService implements OnModuleInit {
   ) {
     this.indexName = this.configService.get<string>(
       'ELASTICSEARCH_INDEX',
-      'programs',
+      'videos',
     );
   }
 
@@ -65,7 +65,7 @@ export class ProgramSearchService implements OnModuleInit {
     }
   }
 
-  async search(dto: SearchProgramsDto): Promise<SearchResponseDto> {
+  async search(dto: SearchVideosDto): Promise<SearchResponseDto> {
     const {
       q,
       category,
@@ -117,7 +117,7 @@ export class ProgramSearchService implements OnModuleInit {
     const sortClause = this.buildSort(sort);
 
     try {
-      const response = await this.esService.search<ProgramSearchDocument>({
+      const response = await this.esService.search<VideoSearchDocument>({
         index: this.indexName,
         from,
         size: limit,
@@ -128,8 +128,8 @@ export class ProgramSearchService implements OnModuleInit {
       const total = (response.hits.total as SearchTotalHits).value;
 
       const data = response.hits.hits
-        .map((hit) => this.toProgram(hit._source))
-        .filter((program): program is Program => !!program);
+        .map((hit) => this.toVideo(hit._source))
+        .filter((video): video is Video => !!video);
 
       const totalPages = Math.ceil(total / limit) || 1;
 
@@ -156,12 +156,12 @@ export class ProgramSearchService implements OnModuleInit {
     }
   }
 
-  async indexProgram(program: Partial<Program>): Promise<void> {
-    if (!program.id) {
+  async indexVideo(video: Partial<Video>): Promise<void> {
+    if (!video.id) {
       return;
     }
 
-    const document = this.serializeProgram(program);
+    const document = this.serializeVideo(video);
     try {
       await this.esService.index({
         index: this.indexName,
@@ -170,11 +170,11 @@ export class ProgramSearchService implements OnModuleInit {
       });
       await this.esService.indices.refresh({ index: this.indexName });
     } catch (error) {
-      this.logger.error(`Failed to index program ${program.id}`, error);
+      this.logger.error(`Failed to index video ${video.id}`, error);
     }
   }
 
-  async removeProgram(id: string): Promise<void> {
+  async removeVideo(id: string): Promise<void> {
     try {
       await this.esService.delete({
         index: this.indexName,
@@ -184,29 +184,29 @@ export class ProgramSearchService implements OnModuleInit {
       if (error instanceof errors.ResponseError) {
         if (error.statusCode === 404) return;
       }
-      this.logger.error(`Failed to remove program ${id}`, error);
+      this.logger.error(`Failed to remove video ${id}`, error);
     }
   }
 
-  private serializeProgram(program: Partial<Program>): ProgramSearchDocument {
+  private serializeVideo(video: Partial<Video>): VideoSearchDocument {
     return {
-      id: program.id as string,
-      title: program.title ?? '',
-      description: program.description,
-      category: program.category ?? '',
-      type: program.type ?? ProgramType.VIDEO_PODCAST,
-      language: program.language ?? ProgramLanguage.ARABIC,
-      tags: program.tags ?? [],
-      duration: program.duration ?? 0,
-      popularityScore: program.popularityScore ?? 0,
+      id: video.id as string,
+      title: video.title ?? '',
+      description: video.description,
+      category: video.category ?? '',
+      type: video.type ?? VideoType.VIDEO_PODCAST,
+      language: video.language ?? VideoLanguage.ARABIC,
+      tags: video.tags ?? [],
+      duration: video.duration ?? 0,
+      popularityScore: video.popularityScore ?? 0,
       publicationDate:
-        this.toIso(program.publicationDate) ?? new Date().toISOString(),
-      createdAt: this.toIso(program.createdAt),
-      updatedAt: this.toIso(program.updatedAt),
+        this.toIso(video.publicationDate) ?? new Date().toISOString(),
+      createdAt: this.toIso(video.createdAt),
+      updatedAt: this.toIso(video.updatedAt),
     };
   }
 
-  private toProgram(doc?: ProgramSearchDocument): Program | null {
+  private toVideo(doc?: VideoSearchDocument): Video | null {
     if (!doc) {
       return null;
     }
@@ -226,7 +226,7 @@ export class ProgramSearchService implements OnModuleInit {
         : undefined,
       createdAt: doc.createdAt ? new Date(doc.createdAt) : undefined,
       updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : undefined,
-    } as Program;
+    } as Video;
   }
 
   private toIso(value?: Date | string): string | undefined {

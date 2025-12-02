@@ -2,16 +2,16 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Program } from '@octonyah/shared-programs';
-import { PROGRAM_INDEX_QUEUE } from './program-index.queue';
-import { ProgramIndexQueueService } from './program-index.queue.service';
-import { ProgramIndexProcessor } from './program-index.processor';
+import { Video } from '@octonyah/shared-videos';
+import { VIDEO_INDEX_QUEUE } from './video-index.queue';
+import { VideoIndexQueueService } from './video-index.queue.service';
+import { VideoIndexProcessor } from './video-index.processor';
 import { SearchModule } from '../search/search.module';
 
 @Module({
   imports: [
     BullModule.registerQueueAsync({
-      name: PROGRAM_INDEX_QUEUE,
+      name: VIDEO_INDEX_QUEUE,
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -22,10 +22,10 @@ import { SearchModule } from '../search/search.module';
         },
       }),
     }),
-    TypeOrmModule.forFeature([Program]),
+    TypeOrmModule.forFeature([Video]),
     SearchModule,
   ],
-  providers: [ProgramIndexQueueService, ProgramIndexProcessor],
-  exports: [ProgramIndexQueueService],
+  providers: [VideoIndexQueueService, VideoIndexProcessor],
+  exports: [VideoIndexQueueService],
 })
 export class JobsModule {}

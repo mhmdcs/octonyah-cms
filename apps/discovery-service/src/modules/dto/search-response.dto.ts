@@ -1,18 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Program } from '@octonyah/shared-programs';
+import { Video } from '@octonyah/shared-videos';
 
-// includes the programs array, pagination metadata, total count
+// includes the videos array, pagination metadata, total count
 // to help frontends implement pagination
 export class SearchResponseDto {
   @ApiProperty({
-    description: 'Array of programs matching the search criteria',
-    type: [Program],
+    description: 'Array of videos matching the search criteria',
+    type: [Video],
   })
-  data: Program[];
+  data: Video[];
 
-  // all pages of programs
+  // all pages of videos
   @ApiProperty({
-    description: 'Total number of programs matching the search criteria',
+    description: 'Total number of videos matching the search criteria',
     example: 150,
   })
   total: number;
