@@ -172,7 +172,8 @@ export class VideosService {
 
   async remove(id: string): Promise<void> {
     const video = await this.findOne(id);
-    await this.videoRepository.remove(video);
+    // Use soft delete instead of hard delete
+    await this.videoRepository.softRemove(video);
     this.videoEventsPublisher.videoDeleted({ id });
   }
 

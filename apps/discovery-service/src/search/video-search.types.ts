@@ -13,6 +13,7 @@ export interface VideoSearchDocument {
   publicationDate: string; // ISO string
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string;
   // Media URLs
   videoUrl?: string;
   thumbnailUrl?: string;

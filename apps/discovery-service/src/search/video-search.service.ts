@@ -55,6 +55,7 @@ export class VideoSearchService implements OnModuleInit {
               publicationDate: { type: 'date' },
               createdAt: { type: 'date' },
               updatedAt: { type: 'date' },
+              deletedAt: { type: 'date' },
               // Media URLs (not indexed, just stored)
               videoUrl: { type: 'keyword', index: false },
               thumbnailUrl: { type: 'keyword', index: false },
@@ -211,6 +212,7 @@ export class VideoSearchService implements OnModuleInit {
         this.toIso(video.publicationDate) ?? new Date().toISOString(),
       createdAt: this.toIso(video.createdAt),
       updatedAt: this.toIso(video.updatedAt),
+      deletedAt: this.toIso(video.deletedAt),
       // Media URLs
       videoUrl: video.videoUrl,
       thumbnailUrl: video.thumbnailUrl,

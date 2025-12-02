@@ -43,10 +43,18 @@ export class VideoIndexProcessor extends WorkerHost {
       return;
     }
 
+    // Include soft-deleted videos to check their status
     const video = await this.videoRepository.findOne({
       where: { id: videoId },
+      withDeleted: true,
     });
     if (!video) {
+      return;
+    }
+
+    // If video is soft-deleted, remove it from Elasticsearch instead of indexing
+    if (video.deletedAt) {
+      await this.videoSearch.removeVideo(videoId);
       return;
     }
 
@@ -54,12 +62,16 @@ export class VideoIndexProcessor extends WorkerHost {
   }
 
   private async handleReindexAll() {
+    // Only index non-deleted videos (TypeORM automatically excludes soft-deleted)
     const videos = await this.videoRepository.find({
       order: { publicationDate: 'ASC' },
     });
 
     for (const video of videos) {
-      await this.videoSearch.indexVideo(video);
+      // Only index videos that are not soft-deleted
+      if (!video.deletedAt) {
+        await this.videoSearch.indexVideo(video);
+      }
     }
   }
 

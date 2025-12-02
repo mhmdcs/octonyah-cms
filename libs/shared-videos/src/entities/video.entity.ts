@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 
 export enum VideoType {
@@ -67,11 +68,6 @@ export class Video {
   @Column({ type: 'varchar', length: 500, nullable: true })
   videoUrl?: string;
 
-  /**
-   * Thumbnail URL from the source platform (e.g., YouTube thumbnail URL)
-   * For imported videos, this is the original platform thumbnail URL.
-   * For native videos, this can be set manually.
-   */
   @Column({ type: 'varchar', length: 500, nullable: true })
   thumbnailUrl?: string;
 
@@ -104,4 +100,8 @@ export class Video {
   // Auto update timestamp thru TypeORM
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Soft delete timestamp - automatically set when soft deleted
+  @DeleteDateColumn()
+  deletedAt?: Date;
 }

@@ -18,6 +18,10 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 
 ### Content Management System (CMS)
 - CRUD operations for videos (video podcasts and documentaries)
+- **Soft delete functionality** - Videos are soft-deleted (marked with `deletedAt` timestamp) instead of being permanently removed, allowing for recovery and audit trails
+  - Soft-deleted videos are automatically excluded from all queries
+  - Redis cache and Elasticsearch index are immediately cleared when a video is soft-deleted
+  - Automatic cleanup job permanently deletes videos soft-deleted more than 90 days ago
 - **Video importing from external platforms** (YouTube support built-in, extensible for other platforms)
   - Automatic metadata extraction (title, description, duration, thumbnail, tags)
   - Platform thumbnail URLs stored directly (no download - YouTube thumbnails are CDN-hosted and reliable)
@@ -116,6 +120,10 @@ flowchart TD
 
 - Production-ready transactional relational database with strong reliability guarantees
 - Works seamlessly with TypeORM and NestJS ecosystem
+- **Soft delete support** - Videos use TypeORM's `@DeleteDateColumn` for soft deletes, allowing data recovery and maintaining audit trails
+  - Soft-deleted videos are automatically excluded from standard queries
+  - `deletedAt` timestamp tracks when videos were soft-deleted
+  - Automatic cleanup job permanently removes videos soft-deleted more than 90 days ago
 - If scaling vertically becomes infeasible down the line, then we can upgrade Postgres to Citus Data distributed database to scale horizontally
 
 ### 3. Microservices + Shared Library
@@ -194,6 +202,7 @@ Supporting infrastructure (local/dev via Docker Compose):
 - **Shared contracts**: Event names and payload contracts live in `libs/shared-videos`, ensuring publishers and consumers stay aligned without tight coupling.
 - **Caching + invalidation**: Discovery caches read-heavy endpoints (individual video fetch + search queries) in Redis with a configurable TTL. CMS emits events, and the discovery service invalidates affected cache keys immediately (video-specific keys + all search-result caches), keeping cached data fresh without synchronous coordination.
 - **Elasticsearch read model**: Discovery maintains a secondary search index that is updated asynchronously from CMS events and BullMQ worker jobs, allowing fast full-text search, filtering, and sorting without hammering Postgres.
+- **Soft delete handling**: When a video is soft-deleted in PostgreSQL (marked with `deletedAt`), the system immediately removes it from Redis cache and Elasticsearch index via RabbitMQ events. This ensures soft-deleted videos don't appear in search results or cached responses, while PostgreSQL maintains the record for recovery and audit purposes.
 - **Scalable & Future-ready**: Additional consumers (Redis cache warmers, BullMQ queues, analytics services) can subscribe to the same events without modifying the core services.
 
 ## Project Structure
@@ -245,7 +254,10 @@ apps/
         │   ├── jobs.module.ts
         │   ├── video-index.processor.ts
         │   ├── video-index.queue.service.ts
-        │   └── video-index.queue.ts
+        │   ├── video-index.queue.ts
+        │   ├── cleanup-soft-deletes.processor.ts  # Cleanup job for old soft-deleted videos
+        │   ├── cleanup-soft-deletes.queue.service.ts
+        │   └── cleanup-soft-deletes.queue.ts
         ├── modules/
         │   ├── discovery.module.ts
         │   ├── discovery.controller.ts
@@ -519,10 +531,10 @@ Swagger UI provides:
 - `GET /` - Hello World endpoint for testing
 - `POST /cms/videos` - Create a new video manually
 - `POST /cms/videos/import` - **Import a video from external platform** (YouTube, etc.)
-- `GET /cms/videos` - Get all videos
-- `GET /cms/videos/:id` - Get a video by ID
+- `GET /cms/videos` - Get all videos (automatically excludes soft-deleted videos)
+- `GET /cms/videos/:id` - Get a video by ID (returns 404 if soft-deleted)
 - `PATCH /cms/videos/:id` - Update a video
-- `DELETE /cms/videos/:id` - Delete a video
+- `DELETE /cms/videos/:id` - Soft delete a video (marks with `deletedAt` timestamp, removes from cache and search index)
 
 #### Discovery service (public)
 - Base URL: `http://localhost:${DISCOVERY_PORT}` (default `http://localhost:3001`)
