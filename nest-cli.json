@@ -64,15 +64,6 @@
         "tsConfigPath": "libs/shared-cache/tsconfig.lib.json"
       }
     },
-    "shared-storage": {
-      "type": "library",
-      "root": "libs/shared-storage",
-      "sourceRoot": "libs/shared-storage/src",
-      "entryFile": "src/index",
-      "compilerOptions": {
-        "tsConfigPath": "libs/shared-storage/tsconfig.lib.json"
-      }
-    },
     "shared-video-platforms": {
       "type": "library",
       "root": "libs/shared-video-platforms",
