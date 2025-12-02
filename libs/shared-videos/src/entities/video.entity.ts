@@ -16,6 +16,17 @@ export enum VideoLanguage {
   ENGLISH = 'en',
 }
 
+/**
+ * Represents the source platform of a video.
+ * NATIVE = uploaded directly to our platform
+ * YOUTUBE = imported from YouTube
+ * (more platforms can be added)
+ */
+export enum VideoPlatform {
+  NATIVE = 'native',
+  YOUTUBE = 'youtube',
+}
+
 @Entity('videos')
 export class Video {
   @PrimaryGeneratedColumn('uuid')
@@ -58,6 +69,34 @@ export class Video {
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   thumbnailImageUrl?: string;
+
+  /**
+   * Source platform of the video (native, youtube, etc.)
+   * Defaults to NATIVE for directly uploaded videos
+   */
+  @Column({ type: 'varchar', length: 50, default: VideoPlatform.NATIVE })
+  platform: VideoPlatform;
+
+  /**
+   * Video ID on the external platform (e.g., YouTube video ID)
+   * Null for native uploads
+   */
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  platformVideoId?: string;
+
+  /**
+   * Embeddable URL for the video (e.g., YouTube embed URL)
+   * Allows frontend to embed the video player
+   */
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  embedUrl?: string;
+
+  /**
+   * Original thumbnail URL from the source platform
+   * Stored for reference; actual thumbnail served from our storage
+   */
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  originalThumbnailUrl?: string;
 
   // Auto set timestamp thru TypeORM
   @CreateDateColumn()

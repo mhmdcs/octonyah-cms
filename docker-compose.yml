@@ -84,6 +84,8 @@ services:
       S3_SECRET_KEY: minioadmin
       S3_BUCKET: programs-media
       S3_REGION: us-east-1
+      # YouTube API key for importing videos (get from Google Cloud Console)
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
     ports:
       - '3000:3000'
 

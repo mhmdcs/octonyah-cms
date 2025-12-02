@@ -5,6 +5,7 @@ import {
   Video,
   VideoLanguage,
   VideoType,
+  VideoPlatform,
 } from '@octonyah/shared-videos';
 import { SearchVideosDto } from '../modules/dto/search-videos.dto';
 import { SearchResponseDto } from '../modules/dto/search-response.dto';
@@ -54,6 +55,14 @@ export class VideoSearchService implements OnModuleInit {
               publicationDate: { type: 'date' },
               createdAt: { type: 'date' },
               updatedAt: { type: 'date' },
+              // Media URLs (not indexed, just stored)
+              videoUrl: { type: 'keyword', index: false },
+              thumbnailImageUrl: { type: 'keyword', index: false },
+              // Platform-related fields
+              platform: { type: 'keyword' },
+              platformVideoId: { type: 'keyword' },
+              embedUrl: { type: 'keyword', index: false },
+              originalThumbnailUrl: { type: 'keyword', index: false },
             },
           },
         });
@@ -203,6 +212,14 @@ export class VideoSearchService implements OnModuleInit {
         this.toIso(video.publicationDate) ?? new Date().toISOString(),
       createdAt: this.toIso(video.createdAt),
       updatedAt: this.toIso(video.updatedAt),
+      // Media URLs - serve our own thumbnails, not external ones
+      videoUrl: video.videoUrl,
+      thumbnailImageUrl: video.thumbnailImageUrl,
+      // Platform-related fields
+      platform: video.platform ?? VideoPlatform.NATIVE,
+      platformVideoId: video.platformVideoId,
+      embedUrl: video.embedUrl,
+      originalThumbnailUrl: video.originalThumbnailUrl,
     };
   }
 
@@ -226,6 +243,14 @@ export class VideoSearchService implements OnModuleInit {
         : undefined,
       createdAt: doc.createdAt ? new Date(doc.createdAt) : undefined,
       updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : undefined,
+      // Media URLs - thumbnailImageUrl is our stored version, not external
+      videoUrl: doc.videoUrl,
+      thumbnailImageUrl: doc.thumbnailImageUrl,
+      // Platform-related fields
+      platform: doc.platform ?? VideoPlatform.NATIVE,
+      platformVideoId: doc.platformVideoId,
+      embedUrl: doc.embedUrl,
+      originalThumbnailUrl: doc.originalThumbnailUrl,
     } as Video;
   }
 

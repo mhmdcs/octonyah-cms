@@ -20,7 +20,9 @@
       "@octonyah/shared-cache": ["libs/shared-cache/src"],
       "@octonyah/shared-cache/*": ["libs/shared-cache/src/*"],
       "@octonyah/shared-storage": ["libs/shared-storage/src"],
-      "@octonyah/shared-storage/*": ["libs/shared-storage/src/*"]
+      "@octonyah/shared-storage/*": ["libs/shared-storage/src/*"],
+      "@octonyah/shared-video-platforms": ["libs/shared-video-platforms/src"],
+      "@octonyah/shared-video-platforms/*": ["libs/shared-video-platforms/src/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

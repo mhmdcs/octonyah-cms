@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class StorageService implements OnModuleInit {
+  private readonly logger = new Logger(StorageService.name);
   private s3Client: S3Client;
   private bucket: string;
 
@@ -87,6 +88,116 @@ export class StorageService implements OnModuleInit {
     });
 
     return await getSignedUrl(this.s3Client, command, { expiresIn });
+  }
+
+  /**
+   * Downloads an image from a URL and uploads it to storage.
+   * Useful for importing thumbnails from external platforms like YouTube.
+   *
+   * @param sourceUrl - URL of the image to download
+   * @param folder - Folder/prefix in storage (default: 'thumbnails')
+   * @returns URL of the uploaded file in our storage
+   */
+  async downloadAndUpload(
+    sourceUrl: string,
+    folder: string = 'thumbnails',
+  ): Promise<string> {
+    try {
+      this.logger.debug(`Downloading image from: ${sourceUrl}`);
+
+      const response = await fetch(sourceUrl);
+      if (!response.ok) {
+        throw new Error(
+          `Failed to download image: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      // Get content type from response or default to jpeg
+      const contentType =
+        response.headers.get('content-type') || 'image/jpeg';
+
+      // Determine file extension from content type
+      const extensionMap: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg',
+        'image/png': 'png',
+        'image/gif': 'gif',
+        'image/webp': 'webp',
+      };
+      const extension = extensionMap[contentType] || 'jpg';
+
+      // Generate unique filename
+      const fileName = `${folder}/${uuidv4()}.${extension}`;
+
+      // Read the image as buffer
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      // Upload to S3/MinIO
+      await this.s3Client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: fileName,
+          Body: buffer,
+          ContentType: contentType,
+        }),
+      );
+
+      // Return the public URL
+      const endpoint = this.configService.get<string>(
+        'S3_ENDPOINT',
+        'http://localhost:9000',
+      );
+      const uploadedUrl = `${endpoint}/${this.bucket}/${fileName}`;
+
+      this.logger.debug(`Uploaded image to: ${uploadedUrl}`);
+      return uploadedUrl;
+    } catch (error) {
+      this.logger.error(`Failed to download and upload image: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Uploads a buffer directly to storage.
+   * Useful when you already have the file content in memory.
+   *
+   * @param buffer - File content as Buffer
+   * @param contentType - MIME type of the file
+   * @param folder - Folder/prefix in storage
+   * @returns URL of the uploaded file
+   */
+  async uploadBuffer(
+    buffer: Buffer,
+    contentType: string,
+    folder: string = 'uploads',
+  ): Promise<string> {
+    const extensionMap: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'video/mp4': 'mp4',
+      'video/webm': 'webm',
+    };
+    const extension = extensionMap[contentType] || 'bin';
+    const fileName = `${folder}/${uuidv4()}.${extension}`;
+
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: fileName,
+        Body: buffer,
+        ContentType: contentType,
+      }),
+    );
+
+    const endpoint = this.configService.get<string>(
+      'S3_ENDPOINT',
+      'http://localhost:9000',
+    );
+    return `${endpoint}/${this.bucket}/${fileName}`;
   }
 }
 

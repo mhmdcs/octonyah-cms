@@ -28,6 +28,7 @@ import {
 import { VideosService } from './videos.service';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
+import { ImportVideoDto } from './dto/import-video.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
@@ -47,12 +48,39 @@ export class VideosController {
   @Post()
   @Roles('admin', 'editor')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new video' })
+  @ApiOperation({ summary: 'Create a new video manually' })
   @ApiBody({ type: CreateVideoDto })
   @ApiResponse({ status: 201, description: 'Video successfully created' })
   @ApiResponse({ status: 400, description: 'Invalid input data' })
   create(@Body() createVideoDto: CreateVideoDto) {
     return this.videosService.create(createVideoDto);
+  }
+
+  @Post('import')
+  @Roles('admin', 'editor')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Import a video from external platform',
+    description:
+      'Import a video from YouTube or other supported platforms. ' +
+      'Automatically extracts metadata (title, description, duration, thumbnail) ' +
+      'and downloads the thumbnail to our storage.',
+  })
+  @ApiBody({ type: ImportVideoDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Video successfully imported',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid URL or unsupported platform',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Video already imported',
+  })
+  importVideo(@Body() importVideoDto: ImportVideoDto) {
+    return this.videosService.importFromPlatform(importVideoDto);
   }
 
   @Get()

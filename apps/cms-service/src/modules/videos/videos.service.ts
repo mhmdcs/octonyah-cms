@@ -1,11 +1,13 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Video, VideoLanguage } from '@octonyah/shared-videos';
+import { Video, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
+import { ImportVideoDto } from './dto/import-video.dto';
 import { VideoEventsPublisher } from '@octonyah/shared-events';
 import { StorageService } from '@octonyah/shared-storage';
+import { VideoPlatformsService } from '@octonyah/shared-video-platforms';
 
 @Injectable()
 export class VideosService {
@@ -16,6 +18,7 @@ export class VideosService {
     private readonly videoRepository: Repository<Video>,
     private readonly videoEventsPublisher: VideoEventsPublisher,
     private readonly storageService: StorageService,
+    private readonly videoPlatformsService: VideoPlatformsService,
   ) {}
 
   async create(createVideoDto: CreateVideoDto): Promise<Video> {
@@ -32,10 +35,123 @@ export class VideosService {
       publicationDate: new Date(createVideoDto.publicationDate),
       videoUrl: createVideoDto.videoUrl,
       thumbnailImageUrl: createVideoDto.thumbnailImageUrl,
+      // Platform-related fields
+      platform: createVideoDto.platform || VideoPlatform.NATIVE,
+      platformVideoId: createVideoDto.platformVideoId,
+      embedUrl: createVideoDto.embedUrl,
+      originalThumbnailUrl: createVideoDto.originalThumbnailUrl,
     });
     const saved = await this.videoRepository.save(video);
     this.videoEventsPublisher.videoCreated(saved);
     return saved;
+  }
+
+  /**
+   * Import a video from an external platform (e.g., YouTube).
+   * Automatically extracts metadata, downloads thumbnail to our storage,
+   * and creates the video record.
+   *
+   * @param importVideoDto - Import parameters with URL and optional overrides
+   * @returns Created video record
+   */
+  async importFromPlatform(importVideoDto: ImportVideoDto): Promise<Video> {
+    this.logger.log(`Importing video from URL: ${importVideoDto.url}`);
+
+    // Detect platform and extract metadata from platform API
+    const metadata = await this.videoPlatformsService.fetchMetadataFromUrl(
+      importVideoDto.url,
+    );
+
+    // Check if video already exists (avoid duplicates)
+    const existingVideo = await this.videoRepository.findOne({
+      where: {
+        platform: metadata.platform,
+        platformVideoId: metadata.platformVideoId,
+      },
+    });
+
+    if (existingVideo) {
+      throw new ConflictException(
+        `Video already imported: ${existingVideo.id} (${metadata.platform}:${metadata.platformVideoId})`,
+      );
+    }
+
+    // Download thumbnail from platform and upload to our storage
+    let thumbnailImageUrl: string | undefined;
+    try {
+      thumbnailImageUrl = await this.storageService.downloadAndUpload(
+        metadata.thumbnailUrl,
+        'thumbnails',
+      );
+      this.logger.log(`Uploaded thumbnail to: ${thumbnailImageUrl}`);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to download thumbnail, using original URL: ${error}`,
+      );
+      // Fall back to original thumbnail URL if download fails
+      thumbnailImageUrl = metadata.thumbnailUrl;
+    }
+
+    // Merge platform metadata with user overrides
+    // User-provided values take precedence
+    const mergedTags = this.mergeTags(metadata.tags, importVideoDto.tags);
+
+    const video = this.videoRepository.create({
+      // Use user override if provided, otherwise use platform metadata
+      title: importVideoDto.title || metadata.title,
+      description: importVideoDto.description || metadata.description,
+      category: importVideoDto.category,
+      type: importVideoDto.type,
+      language: importVideoDto.language || VideoLanguage.ARABIC,
+      duration: metadata.durationSeconds,
+      tags: mergedTags,
+      popularityScore: importVideoDto.popularityScore ?? 0,
+      publicationDate: metadata.publishedAt,
+      // For external videos, videoUrl is the original platform URL
+      videoUrl: metadata.originalUrl,
+      // Thumbnail is stored in our storage
+      thumbnailImageUrl,
+      // Platform-specific fields
+      platform: metadata.platform,
+      platformVideoId: metadata.platformVideoId,
+      embedUrl: metadata.embedUrl,
+      originalThumbnailUrl: metadata.thumbnailUrl,
+    });
+
+    const saved = await this.videoRepository.save(video);
+    this.logger.log(
+      `Successfully imported video: ${saved.id} from ${metadata.platform}`,
+    );
+
+    // Publish event for discovery service to index
+    this.videoEventsPublisher.videoCreated(saved);
+
+    return saved;
+  }
+
+  /**
+   * Merge tags from platform and user input, removing duplicates
+   */
+  private mergeTags(
+    platformTags?: string[],
+    userTags?: string[],
+  ): string[] {
+    const normalizedPlatformTags = this.normalizeTags(platformTags);
+    const normalizedUserTags = this.normalizeTags(userTags);
+
+    // Combine and deduplicate (case-insensitive)
+    const tagSet = new Set<string>();
+    const result: string[] = [];
+
+    for (const tag of [...normalizedUserTags, ...normalizedPlatformTags]) {
+      const lowerTag = tag.toLowerCase();
+      if (!tagSet.has(lowerTag)) {
+        tagSet.add(lowerTag);
+        result.push(tag);
+      }
+    }
+
+    return result;
   }
 
   // Returns videos ordered by publication date (newest first)

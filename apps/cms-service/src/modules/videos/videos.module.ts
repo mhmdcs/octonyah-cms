@@ -10,12 +10,14 @@ import {
   RmqModule,
 } from '@octonyah/shared-events';
 import { StorageModule } from '@octonyah/shared-storage';
+import { VideoPlatformsModule } from '@octonyah/shared-video-platforms';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Video]),
     ConfigModule,
     StorageModule,
+    VideoPlatformsModule,
     RmqModule.forRootAsync({
       name: VIDEO_EVENTS_CLIENT,
     }),

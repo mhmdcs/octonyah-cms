@@ -18,6 +18,11 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 
 ### Content Management System (CMS)
 - CRUD operations for videos (video podcasts and documentaries)
+- **Video importing from external platforms** (YouTube support built-in, extensible for other platforms)
+  - Automatic metadata extraction (title, description, duration, thumbnail, tags)
+  - Thumbnail download and storage to MinIO/S3 (avoids hitting external APIs on search)
+  - Duplicate detection to prevent re-importing the same video
+  - Platform-specific fields (embedUrl, platformVideoId, originalThumbnailUrl)
 - Metadata management (title, description, category, language, duration, publication date)
 - Media file management (video and thumbnail images) via MinIO/S3-compatible storage
 - File upload endpoints for videos and thumbnails
@@ -49,14 +54,20 @@ flowchart TD
     I((Admin/Editors)):::actor
     U((Users)):::actor
 
+    %% External Platforms
+    YT[YouTube API<br/>External Platform]:::external
+
     %% CMS System
     A[CMS Service<br/>Port 3000]:::service
     B[(PostgreSQL<br/>Database)]:::database
     M[MinIO / AWS S3<br/>Object Storage]:::storage
     
     I -->|create/update/delete| A
+    I -->|import video URL| A
+    A -->|fetches metadata| YT
+    A -->|downloads thumbnail| YT
     A -->|writes video data| B
-    A -->|uploads media files| M
+    A -->|stores thumbnails| M
     A -->|publishes events| C
 
     %% Event Bus
@@ -82,8 +93,9 @@ flowchart TD
     D -->|queries| G
     D -->|reads cache| E
 
-    %% Discovery API
+    %% Discovery API - returns our MinIO thumbnail URLs
     U -->|search/browse| D
+    D -.->|returns MinIO<br/>thumbnail URLs| U
 
     %% Styling
     classDef actor fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000
@@ -93,6 +105,7 @@ flowchart TD
     classDef queue fill:#fce4ec,stroke:#880e4f,stroke-width:2px,color:#000
     classDef search fill:#e0f2f1,stroke:#004d40,stroke-width:2px,color:#000
     classDef storage fill:#ede7f6,stroke:#311b92,stroke-width:2px,color:#000
+    classDef external fill:#ffebee,stroke:#c62828,stroke-width:2px,color:#000
 ```
 
 ## System Design
@@ -139,19 +152,32 @@ flowchart TD
 - RabbitMQ + BullMQ keep indices eventually consistent without synchronous coupling
 - Discovery can scale independently for high read traffic
 
-### 6. BullMQ Background Jobs
+### 7. BullMQ Background Jobs
 - Use BullMQ (Redis-backed) workers inside the discovery service to rebuild and heal the Elasticsearch index.
 - Queue provides retryable, observable jobs for large reindex operations
 - Decouples RabbitMQ event handling from heavy index writes
 - Allows triggering reindexing via HTTP without locking the main request cycle
 
-### 7. MinIO Object Storage (AWS S3-compatible)
+### 8. MinIO Object Storage (AWS S3-compatible)
 - MinIO provides S3-compatible object storage for media files (videos and thumbnail images)
 - Files are stored in organized folders (`videos/` and `thumbnails/`) with UUID-based naming
 - Storage service automatically creates the bucket on application startup
 - Media files are automatically deleted when videos are removed or when URLs are updated
 - Supports both direct access URLs and signed URLs for secure, time-limited access
 - Can be replaced with AWS S3 or other S3-compatible services by updating environment variables
+- **Thumbnails from imported videos are downloaded and stored locally** - search results return our MinIO URLs instead of external platform URLs, avoiding API rate limits and external dependencies
+
+### 9. External Video Platform Integration (YouTube, etc.)
+- Pluggable provider architecture allows importing videos from external platforms
+- **YouTube provider** uses YouTube Data API v3 to extract metadata:
+  - Title, description, duration (ISO 8601 parsed to seconds), publication date
+  - Best quality thumbnail URL (maxres → standard → high → medium → default)
+  - Channel name, tags, view/like counts
+  - Embed URL for frontend video players
+- Video URLs are auto-detected from various formats (watch, youtu.be, embed, shorts)
+- Duplicate detection prevents re-importing the same video
+- User can override extracted metadata (title, description, tags) during import
+- Easy to extend with additional providers (Vimeo, Dailymotion, etc.)
 
 ## Service Layout
 
@@ -164,6 +190,7 @@ This repository follows a monorepo layout with two microservices and shared libr
 - `libs/shared-events` – RabbitMQ event system (publishers, listeners, configuration).
 - `libs/shared-cache` – Redis caching module and service.
 - `libs/shared-storage` – S3-compatible object storage module for media files.
+- `libs/shared-video-platforms` – External video platform integration (YouTube API, metadata extraction, provider abstraction).
 
 Each service has its own entry point (`main.ts`), module tree, Swagger document, and can be deployed/scaled independently. Shared code is imported through path aliases (e.g., `@octonyah/shared-videos`, `@octonyah/shared-config`) to keep the services decoupled while avoiding duplication.
 
@@ -213,7 +240,8 @@ apps/
 │           └── videos/
 │               ├── dto/
 │               │   ├── create-video.dto.ts
-│               │   └── update-video.dto.ts
+│               │   ├── update-video.dto.ts
+│               │   └── import-video.dto.ts     # DTO for importing from external platforms
 │               ├── videos.controller.ts
 │               ├── videos.module.ts
 │               ├── videos.service.ts
@@ -278,10 +306,22 @@ libs/
 │       ├── redis-cache.service.ts
 │       ├── cache.constants.ts
 │       └── index.ts
-└── shared-storage/                        # Object storage (S3/MinIO)
+├── shared-storage/                        # Object storage (S3/MinIO)
+│   └── src/
+│       ├── storage.module.ts
+│       ├── storage.service.ts
+│       └── index.ts
+└── shared-video-platforms/                # External platform integration
     └── src/
-        ├── storage.module.ts
-        ├── storage.service.ts
+        ├── providers/
+        │   └── youtube.provider.ts        # YouTube Data API v3 integration
+        ├── types/
+        │   ├── platform-provider.interface.ts
+        │   └── video-metadata.interface.ts
+        ├── utils/
+        │   └── iso8601-duration.util.ts   # YouTube duration parser (PT1H2M30S → seconds)
+        ├── video-platforms.module.ts
+        ├── video-platforms.service.ts
         └── index.ts
 ```
 
@@ -293,17 +333,20 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
 
 1. **CMS microservice (`apps/cms-service`)** – Internal content management
    - Handles CRUD operations for videos
+   - **Imports videos from external platforms** (YouTube support built-in)
    - JWT-based authentication with role-based access control (admin, editor)
    - Validates input data using class-validator
    - Manages video metadata and media files via shared storage library
+   - Downloads and stores thumbnails from external platforms to MinIO/S3
    - Publishes events to RabbitMQ when videos are created/updated/deleted
-   - Uses shared libraries: `shared-videos`, `shared-config`, `shared-events`, `shared-storage`
+   - Uses shared libraries: `shared-videos`, `shared-config`, `shared-events`, `shared-storage`, `shared-video-platforms`
 
 2. **Discovery microservice (`apps/discovery-service`)** – Public search and exploration
    - Provides search functionality with full-text search via Elasticsearch
    - Implements filtering, pagination, and browse experiences
    - Redis-backed caching with automatic invalidation via RabbitMQ events
    - BullMQ-powered background jobs for Elasticsearch reindexing
+   - Returns **our MinIO thumbnail URLs** (not external platform URLs) for imported videos
    - Exposes only read APIs to keep the surface limited and cache-friendly
    - Uses shared libraries: `shared-videos`, `shared-config`, `shared-events`, `shared-cache`
 
@@ -334,7 +377,16 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
 7. **Shared Storage (`libs/shared-storage`)**
    - S3-compatible object storage module (MinIO/AWS S3)
    - Handles media file uploads, deletions, and URL generation
+   - Downloads and stores thumbnails from external platforms
    - Used by CMS service for video and thumbnail management
+
+8. **Shared Video Platforms (`libs/shared-video-platforms`)**
+   - Pluggable provider architecture for external video platforms
+   - YouTube provider with Data API v3 integration
+   - Auto-detection of platform from URL
+   - Standardized metadata extraction interface
+   - ISO 8601 duration parsing utility
+   - Easy to extend with new providers (Vimeo, Dailymotion, etc.)
 
 ## Tech Stack
 
@@ -428,7 +480,21 @@ The application uses environment variables for configuration. Edit the `.env` fi
 - `S3_SECRET_KEY` - S3 secret key (default: `minioadmin`)
 - `S3_BUCKET` - S3 bucket name for storing media files (default: `videos-media`)
 - `S3_REGION` - S3 region (default: `us-east-1`)
+- `YOUTUBE_API_KEY` - YouTube Data API v3 key (required for importing YouTube videos, see below)
 - `NODE_ENV` - Environment mode (development/production)
+
+#### Getting a YouTube API Key
+
+To enable YouTube video importing, you need a YouTube Data API v3 key:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Navigate to **APIs & Services** → **Library**
+4. Search for "YouTube Data API v3" and enable it
+5. Go to **APIs & Services** → **Credentials**
+6. Click **Create Credentials** → **API key**
+7. (Optional) Restrict the key to YouTube Data API v3 for security
+8. Copy the key and set it as `YOUTUBE_API_KEY` environment variable
 
 ### Docker Compose (All services)
 
@@ -486,7 +552,8 @@ Swagger UI provides:
 #### CMS service (internal)
 - Base URL: `http://localhost:${CMS_PORT}` (default `http://localhost:3000`)
 - `GET /` - Hello World endpoint for testing
-- `POST /cms/videos` - Create a new video
+- `POST /cms/videos` - Create a new video manually
+- `POST /cms/videos/import` - **Import a video from external platform** (YouTube, etc.)
 - `GET /cms/videos` - Get all videos
 - `GET /cms/videos/:id` - Get a video by ID
 - `PATCH /cms/videos/:id` - Update a video
@@ -590,6 +657,43 @@ curl -X POST http://localhost:3000/cms/videos/upload/thumbnail \
 ```
 
 The upload endpoints return a JSON response with the `url` field containing the full URL to the uploaded file, which can then be used in the `videoUrl` or `thumbnailImageUrl` fields when creating/updating videos.
+
+**Import a YouTube video:**
+```bash
+curl -X POST http://localhost:3000/cms/videos/import \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -d '{
+    "url": "https://www.youtube.com/watch?v=testQ",
+    "category": "History",
+    "type": "video_podcast"
+  }'
+```
+
+The import endpoint:
+1. Detects the platform from the URL (YouTube in this case)
+2. Calls the YouTube Data API to fetch metadata (title, description, duration, thumbnail, tags)
+3. Downloads the thumbnail and stores it in MinIO/S3
+4. Creates the video record with platform-specific fields:
+   - `platform: "youtube"`
+   - `platformVideoId: "dQw4w9WgXcQ"`
+   - `embedUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"`
+   - `thumbnailImageUrl: "http://minio:9000/programs-media/thumbnails/uuid.jpg"` (our storage)
+   - `originalThumbnailUrl: "https://i.ytimg.com/vi/.../maxresdefault.jpg"` (original for reference)
+5. Publishes event to RabbitMQ for discovery service to index
+
+Optional fields for overriding extracted metadata:
+- `title` - Override the YouTube video title
+- `description` - Override the YouTube video description
+- `language` - Set the language (defaults to Arabic)
+- `tags` - Additional tags (merged with YouTube tags)
+- `popularityScore` - Initial popularity score
+
+Supported YouTube URL formats:
+- `https://www.youtube.com/watch?v=VIDEO_ID`
+- `https://youtu.be/VIDEO_ID`
+- `https://www.youtube.com/embed/VIDEO_ID`
+- `https://www.youtube.com/shorts/VIDEO_ID`
 
 **Search videos (discovery service):**
 ```bash

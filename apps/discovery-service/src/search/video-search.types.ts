@@ -1,4 +1,4 @@
-import { VideoLanguage, VideoType } from '@octonyah/shared-videos';
+import { VideoLanguage, VideoType, VideoPlatform } from '@octonyah/shared-videos';
 
 export interface VideoSearchDocument {
   id: string;
@@ -13,5 +13,13 @@ export interface VideoSearchDocument {
   publicationDate: string; // ISO string
   createdAt?: string;
   updatedAt?: string;
+  // Media URLs
+  videoUrl?: string;
+  thumbnailImageUrl?: string;
+  // Platform-related fields
+  platform: VideoPlatform;
+  platformVideoId?: string;
+  embedUrl?: string;
+  originalThumbnailUrl?: string;
 }
 
