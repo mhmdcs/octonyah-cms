@@ -35,35 +35,17 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    const user = await this.validateUser(dto.username, dto.password);
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    const user = this.validateUser(dto.username, dto.password);
+    if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    const payload: JwtPayload = {
-      sub: user.id,
-      username: user.username,
-      roles: user.roles,
-    };
+    const payload: JwtPayload = { sub: user.id, username: user.username, roles: user.roles };
+    const expiresIn = parseInt(this.configService.get<string>('JWT_EXPIRES_IN_SECONDS') ?? '3600', 10);
 
-    const expiresIn = parseInt(
-      this.configService.get<string>('JWT_EXPIRES_IN_SECONDS') ?? '3600',
-      10,
-    );
-
-    return {
-      access_token: await this.jwtService.signAsync(payload, {
-        expiresIn,
-      }),
-    };
+    return { access_token: await this.jwtService.signAsync(payload, { expiresIn }) };
   }
 
-  private async validateUser(username: string, password: string) {
-    const user = USERS.find((u) => u.username === username);
-    if (!user || user.password !== password) {
-      return null;
-    }
-    return user;
+  private validateUser(username: string, password: string) {
+    return USERS.find((u) => u.username === username && u.password === password) ?? null;
   }
 }
 

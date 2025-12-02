@@ -10,16 +10,9 @@ export class ElasticsearchHealthIndicator extends HealthIndicator {
 
   async isHealthy(key: string): Promise<HealthIndicatorResult> {
     try {
-      const response = await this.elasticsearchService.ping();
-      const isHealthy = response === true;
-
-      const result = this.getStatus(key, isHealthy);
-
-      if (isHealthy) {
-        return result;
-      }
-
-      throw new HealthCheckError('Elasticsearch health check failed', result);
+      const isHealthy = (await this.elasticsearchService.ping()) === true;
+      if (isHealthy) return this.getStatus(key, true);
+      throw new HealthCheckError('Elasticsearch health check failed', this.getStatus(key, false));
     } catch (error) {
       throw new HealthCheckError('Elasticsearch health check failed', this.getStatus(key, false, { message: error.message }));
     }

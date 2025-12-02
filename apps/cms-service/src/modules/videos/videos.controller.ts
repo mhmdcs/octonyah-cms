@@ -33,9 +33,7 @@ import { Roles } from '../../auth/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('cms/videos')
 export class VideosController {
-  constructor(
-    private readonly videosService: VideosService,
-  ) {}
+  constructor(private readonly videosService: VideosService) {}
 
   @Post()
   @Roles('admin', 'editor')

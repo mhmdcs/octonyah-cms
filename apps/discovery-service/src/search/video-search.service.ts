@@ -166,17 +166,10 @@ export class VideoSearchService implements OnModuleInit {
   }
 
   async indexVideo(video: Partial<Video>): Promise<void> {
-    if (!video.id) {
-      return;
-    }
-
-    const document = this.serializeVideo(video);
+    if (!video.id) return;
     try {
-      await this.esService.index({
-        index: this.indexName,
-        id: document.id,
-        document,
-      });
+      const document = this.serializeVideo(video);
+      await this.esService.index({ index: this.indexName, id: document.id, document });
       await this.esService.indices.refresh({ index: this.indexName });
     } catch (error) {
       this.logger.error(`Failed to index video ${video.id}`, error);
@@ -185,14 +178,9 @@ export class VideoSearchService implements OnModuleInit {
 
   async removeVideo(id: string): Promise<void> {
     try {
-      await this.esService.delete({
-        index: this.indexName,
-        id,
-      });
+      await this.esService.delete({ index: this.indexName, id });
     } catch (error) {
-      if (error instanceof errors.ResponseError) {
-        if (error.statusCode === 404) return;
-      }
+      if (error instanceof errors.ResponseError && error.statusCode === 404) return;
       this.logger.error(`Failed to remove video ${id}`, error);
     }
   }
@@ -224,47 +212,29 @@ export class VideoSearchService implements OnModuleInit {
   }
 
   private toVideo(doc?: VideoSearchDocument): Video | null {
-    if (!doc) {
-      return null;
-    }
-
+    if (!doc) return null;
     return {
-      id: doc.id,
-      title: doc.title,
-      description: doc.description ?? null,
-      category: doc.category,
-      type: doc.type,
-      language: doc.language,
-      tags: doc.tags ?? [],
-      duration: doc.duration,
-      popularityScore: doc.popularityScore ?? 0,
-      publicationDate: doc.publicationDate
-        ? new Date(doc.publicationDate)
-        : undefined,
+      id: doc.id, title: doc.title, description: doc.description ?? null,
+      category: doc.category, type: doc.type, language: doc.language,
+      tags: doc.tags ?? [], duration: doc.duration, popularityScore: doc.popularityScore ?? 0,
+      publicationDate: doc.publicationDate ? new Date(doc.publicationDate) : undefined,
       createdAt: doc.createdAt ? new Date(doc.createdAt) : undefined,
       updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : undefined,
-      // Media URLs
-      videoUrl: doc.videoUrl,
-      thumbnailUrl: doc.thumbnailUrl,
-      // Platform-related fields
+      videoUrl: doc.videoUrl, thumbnailUrl: doc.thumbnailUrl,
       platform: doc.platform ?? VideoPlatform.NATIVE,
-      platformVideoId: doc.platformVideoId,
-      embedUrl: doc.embedUrl,
+      platformVideoId: doc.platformVideoId, embedUrl: doc.embedUrl,
     } as Video;
   }
 
   private toIso(value?: Date | string): string | undefined {
-    if (!value) return undefined;
     return value instanceof Date ? value.toISOString() : value;
   }
 
   private buildSort(sort?: string) {
-    if (sort === 'date') {
-      return ['publicationDate:desc'];
-    }
-    if (sort === 'popular') {
-      return ['popularityScore:desc'];
-    }
-    return undefined; // relevance by score
+    const sortMap: Record<string, string[]> = {
+      date: ['publicationDate:desc'],
+      popular: ['popularityScore:desc'],
+    };
+    return sort ? sortMap[sort] : undefined;
   }
 }

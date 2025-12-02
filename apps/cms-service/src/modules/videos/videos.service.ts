@@ -19,24 +19,14 @@ export class VideosService {
     private readonly videoPlatformsService: VideoPlatformsService,
   ) {}
 
-  async create(createVideoDto: CreateVideoDto): Promise<Video> {
+  async create(dto: CreateVideoDto): Promise<Video> {
     const video = this.videoRepository.create({
-      title: createVideoDto.title,
-      description: createVideoDto.description,
-      category: createVideoDto.category,
-      type: createVideoDto.type,
-      language: createVideoDto.language || VideoLanguage.ARABIC,
-      duration: createVideoDto.duration,
-      tags: this.normalizeTags(createVideoDto.tags),
-      popularityScore: createVideoDto.popularityScore ?? 0,
-      // Convert date string to Date object
-      publicationDate: new Date(createVideoDto.publicationDate),
-      videoUrl: createVideoDto.videoUrl,
-      thumbnailUrl: createVideoDto.thumbnailUrl,
-      // Platform-related fields
-      platform: createVideoDto.platform || VideoPlatform.NATIVE,
-      platformVideoId: createVideoDto.platformVideoId,
-      embedUrl: createVideoDto.embedUrl,
+      ...dto,
+      language: dto.language || VideoLanguage.ARABIC,
+      tags: this.normalizeTags(dto.tags),
+      popularityScore: dto.popularityScore ?? 0,
+      publicationDate: new Date(dto.publicationDate),
+      platform: dto.platform || VideoPlatform.NATIVE,
     });
     const saved = await this.videoRepository.save(video);
     this.videoEventsPublisher.videoCreated(saved);
@@ -107,64 +97,31 @@ export class VideosService {
     return saved;
   }
 
-  /**
-   * Merge tags from platform and user input, removing duplicates
-   */
-  private mergeTags(
-    platformTags?: string[],
-    userTags?: string[],
-  ): string[] {
-    const normalizedPlatformTags = this.normalizeTags(platformTags);
-    const normalizedUserTags = this.normalizeTags(userTags);
-
-    // Combine and deduplicate (case-insensitive)
-    const tagSet = new Set<string>();
-    const result: string[] = [];
-
-    for (const tag of [...normalizedUserTags, ...normalizedPlatformTags]) {
-      const lowerTag = tag.toLowerCase();
-      if (!tagSet.has(lowerTag)) {
-        tagSet.add(lowerTag);
-        result.push(tag);
-      }
-    }
-
-    return result;
+  /** Merge tags from platform and user input, removing duplicates (case-insensitive) */
+  private mergeTags(platformTags?: string[], userTags?: string[]): string[] {
+    const all = [...this.normalizeTags(userTags), ...this.normalizeTags(platformTags)];
+    const seen = new Set<string>();
+    return all.filter((tag) => !seen.has(tag.toLowerCase()) && seen.add(tag.toLowerCase()));
   }
 
-  // Returns videos ordered by publication date (newest first)
-  // Array of all videos  ordered by publication date descending
   async findAll(): Promise<Video[]> {
-    return await this.videoRepository.find({
-      order: { publicationDate: 'DESC' },
-    });
+    return this.videoRepository.find({ order: { publicationDate: 'DESC' } });
   }
 
   async findOne(id: string): Promise<Video> {
     const video = await this.videoRepository.findOne({ where: { id } });
-    if (!video) {
-      throw new NotFoundException(`Video with ID ${id} not found`);
-    }
+    if (!video) throw new NotFoundException(`Video with ID ${id} not found`);
     return video;
   }
 
-  async update(id: string, updateVideoDto: UpdateVideoDto): Promise<Video> {
+  async update(id: string, dto: UpdateVideoDto): Promise<Video> {
     const video = await this.findOne(id);
     
-    const updateData: Partial<Video> = {};
-    if (updateVideoDto.title !== undefined) updateData.title = updateVideoDto.title;
-    if (updateVideoDto.description !== undefined) updateData.description = updateVideoDto.description;
-    if (updateVideoDto.category !== undefined) updateData.category = updateVideoDto.category;
-    if (updateVideoDto.type !== undefined) updateData.type = updateVideoDto.type;
-    if (updateVideoDto.language !== undefined) updateData.language = updateVideoDto.language;
-    if (updateVideoDto.duration !== undefined) updateData.duration = updateVideoDto.duration;
-    if (updateVideoDto.tags !== undefined) updateData.tags = this.normalizeTags(updateVideoDto.tags);
-    if (updateVideoDto.popularityScore !== undefined) updateData.popularityScore = updateVideoDto.popularityScore;
-    if (updateVideoDto.publicationDate !== undefined) updateData.publicationDate = new Date(updateVideoDto.publicationDate);
-    if (updateVideoDto.videoUrl !== undefined) updateData.videoUrl = updateVideoDto.videoUrl;
-    if (updateVideoDto.thumbnailUrl !== undefined) updateData.thumbnailUrl = updateVideoDto.thumbnailUrl;
+    const { tags, publicationDate, ...rest } = dto;
+    Object.assign(video, rest);
+    if (tags !== undefined) video.tags = this.normalizeTags(tags);
+    if (publicationDate !== undefined) video.publicationDate = new Date(publicationDate);
 
-    Object.assign(video, updateData);
     const updated = await this.videoRepository.save(video);
     this.videoEventsPublisher.videoUpdated(updated);
     return updated;
@@ -172,18 +129,12 @@ export class VideosService {
 
   async remove(id: string): Promise<void> {
     const video = await this.findOne(id);
-    // Use soft delete instead of hard delete
     await this.videoRepository.softRemove(video);
     this.videoEventsPublisher.videoDeleted({ id });
   }
 
   private normalizeTags(tags?: string[]): string[] {
-    if (!tags) {
-      return [];
-    }
-    return tags
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0);
+    return tags?.map((t) => t.trim()).filter(Boolean) ?? [];
   }
 }
 

@@ -27,11 +27,7 @@ async function bootstrap() {
 
   await app.startAllMicroservices();
 
-  const port =
-    configService.get<number>('DISCOVERY_PORT') ??
-    configService.get<number>('PORT') ??
-    configService.get<number>('PORT_DISCOVERY') ??
-    3001;
+  const port = configService.get<number>('DISCOVERY_PORT') ?? configService.get<number>('PORT') ?? 3001;
 
   await app.listen(port);
   console.log(`Discovery service running on: http://localhost:${port}`);

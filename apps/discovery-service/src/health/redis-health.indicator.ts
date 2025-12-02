@@ -10,20 +10,12 @@ export class RedisHealthIndicator extends HealthIndicator {
 
   async isHealthy(key: string): Promise<HealthIndicatorResult> {
     try {
-      // Try to set and get a test key to verify Redis connectivity
       const testKey = `health-check:${Date.now()}`;
       await this.redisCacheService.set(testKey, 'ok', 1);
-      const value = await this.redisCacheService.get<string>(testKey);
+      const isHealthy = (await this.redisCacheService.get<string>(testKey)) === 'ok';
       await this.redisCacheService.delete(testKey);
-
-      const isHealthy = value === 'ok';
-      const result = this.getStatus(key, isHealthy);
-
-      if (isHealthy) {
-        return result;
-      }
-
-      throw new HealthCheckError('Redis health check failed', result);
+      if (isHealthy) return this.getStatus(key, true);
+      throw new HealthCheckError('Redis health check failed', this.getStatus(key, false));
     } catch (error) {
       throw new HealthCheckError('Redis health check failed', this.getStatus(key, false, { message: error.message }));
     }

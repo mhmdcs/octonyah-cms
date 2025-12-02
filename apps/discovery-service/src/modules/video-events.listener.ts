@@ -54,13 +54,11 @@ export class VideoEventsListener extends EventListenerBase {
   }
 
   private async invalidateCache(videoId?: string) {
-    if (videoId) {
-      await this.cache.delete(buildVideoCacheKey(videoId));
-    }
+    if (videoId) await this.cache.delete(buildVideoCacheKey(videoId));
     await this.cache.deleteByPrefix(SEARCH_CACHE_PREFIX);
   }
 
-  private async enqueueIndex(video?: Partial<Video>) {
-    await this.videoIndexQueue.enqueueVideo(video?.id);
+  private enqueueIndex(video?: Partial<Video>) {
+    return this.videoIndexQueue.enqueueVideo(video?.id);
   }
 }

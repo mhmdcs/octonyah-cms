@@ -18,23 +18,11 @@
  * @returns Duration in seconds, or 0 if invalid format
  */
 export function parseIso8601DurationToSeconds(duration: string): number {
-  if (!duration || typeof duration !== 'string') {
-    return 0;
-  }
-
-  // ISO 8601 duration regex: PT[n]H[n]M[n]S
-  const regex = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/;
-  const match = duration.match(regex);
-
-  if (!match) {
-    return 0;
-  }
-
-  const hours = parseInt(match[1] || '0', 10);
-  const minutes = parseInt(match[2] || '0', 10);
-  const seconds = parseInt(match[3] || '0', 10);
-
-  return hours * 3600 + minutes * 60 + seconds;
+  if (!duration || typeof duration !== 'string') return 0;
+  const match = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+  if (!match) return 0;
+  const [, h, m, s] = match;
+  return +(h || 0) * 3600 + +(m || 0) * 60 + +(s || 0);
 }
 
 /**
@@ -49,15 +37,9 @@ export function parseIso8601DurationToSeconds(duration: string): number {
  * @returns Formatted duration string (H:MM:SS or MM:SS)
  */
 export function formatDuration(totalSeconds: number): string {
-  if (totalSeconds < 0) totalSeconds = 0;
-
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const t = Math.max(0, totalSeconds);
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 

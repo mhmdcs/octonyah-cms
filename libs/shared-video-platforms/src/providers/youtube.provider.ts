@@ -70,36 +70,19 @@ export class YouTubeProvider implements PlatformProvider {
    * Extracts YouTube video ID from various URL formats
    */
   extractVideoId(url: string): string | null {
-    if (!url || typeof url !== 'string') {
-      return null;
-    }
-
-    // Remove whitespace and normalize
-    url = url.trim();
-
-    // Patterns for different YouTube URL formats
+    if (!url || typeof url !== 'string') return null;
     const patterns = [
-      // Standard watch URL: youtube.com/watch?v=VIDEO_ID
       /(?:youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})/,
-      // Short URL: youtu.be/VIDEO_ID
       /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-      // Embed URL: youtube.com/embed/VIDEO_ID
       /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-      // Old embed URL: youtube.com/v/VIDEO_ID
       /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
-      // Shorts URL: youtube.com/shorts/VIDEO_ID
       /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-      // Just the video ID (11 chars)
       /^([a-zA-Z0-9_-]{11})$/,
     ];
-
     for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match && match[1]) {
-        return match[1];
-      }
+      const match = url.trim().match(pattern);
+      if (match?.[1]) return match[1];
     }
-
     return null;
   }
 

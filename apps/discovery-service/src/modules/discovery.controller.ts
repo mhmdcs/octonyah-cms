@@ -46,24 +46,15 @@ export class DiscoveryController {
   }
 
   @Get('videos/:id')
-  @ApiOperation({
-    summary: 'Get a video by ID',
-    description: 'Retrieve a specific video by its UUID for public viewing',
-  })
+  @ApiOperation({ summary: 'Get a video by ID', description: 'Retrieve a specific video by its UUID for public viewing' })
   @ApiParam({ name: 'id', description: 'Video UUID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Video found',
-    type: Video,
-  })
+  @ApiResponse({ status: 200, description: 'Video found', type: Video })
   @ApiResponse({ status: 404, description: 'Video not found' })
   async getVideo(@Param('id') id: string): Promise<Video> {
     try {
       return await this.discoveryService.getVideo(id);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error; 
-      }
+      if (error instanceof HttpException) throw error;
       throw new HttpException('Video not found', HttpStatus.NOT_FOUND);
     }
   }

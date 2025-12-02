@@ -20,11 +20,7 @@ export class CleanupSoftDeletesProcessor extends WorkerHost {
   }
 
   async process(job: Job): Promise<void> {
-    if (job.name !== CLEANUP_SOFT_DELETES_JOB) {
-      return;
-    }
-
-    await this.cleanupOldSoftDeletes();
+    if (job.name === CLEANUP_SOFT_DELETES_JOB) await this.cleanupOldSoftDeletes();
   }
 
   /**

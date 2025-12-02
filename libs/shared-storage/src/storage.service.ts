@@ -11,6 +11,11 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 
+const EXTENSION_MAP: Record<string, string> = {
+  'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
+  'image/gif': 'gif', 'image/webp': 'webp', 'video/mp4': 'mp4', 'video/webm': 'webm',
+};
+
 @Injectable()
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
@@ -116,15 +121,7 @@ export class StorageService implements OnModuleInit {
       const contentType =
         response.headers.get('content-type') || 'image/jpeg';
 
-      // Determine file extension from content type
-      const extensionMap: Record<string, string> = {
-        'image/jpeg': 'jpg',
-        'image/jpg': 'jpg',
-        'image/png': 'png',
-        'image/gif': 'gif',
-        'image/webp': 'webp',
-      };
-      const extension = extensionMap[contentType] || 'jpg';
+      const extension = EXTENSION_MAP[contentType] || 'jpg';
 
       // Generate unique filename
       const fileName = `${folder}/${uuidv4()}.${extension}`;
@@ -172,16 +169,7 @@ export class StorageService implements OnModuleInit {
     contentType: string,
     folder: string = 'uploads',
   ): Promise<string> {
-    const extensionMap: Record<string, string> = {
-      'image/jpeg': 'jpg',
-      'image/jpg': 'jpg',
-      'image/png': 'png',
-      'image/gif': 'gif',
-      'image/webp': 'webp',
-      'video/mp4': 'mp4',
-      'video/webm': 'webm',
-    };
-    const extension = extensionMap[contentType] || 'bin';
+    const extension = EXTENSION_MAP[contentType] || 'bin';
     const fileName = `${folder}/${uuidv4()}.${extension}`;
 
     await this.s3Client.send(

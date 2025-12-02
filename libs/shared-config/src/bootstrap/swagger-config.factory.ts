@@ -10,26 +10,15 @@ export interface SwaggerConfigOptions {
   path?: string;
 }
 
-export function setupSwagger(
-  app: INestApplication,
-  options: SwaggerConfigOptions,
-): void {
+export function setupSwagger(app: INestApplication, options: SwaggerConfigOptions): void {
   const config = new DocumentBuilder()
     .setTitle(options.title)
     .setDescription(options.description)
     .setVersion(options.version || '1.0');
 
-  if (options.tags) {
-    options.tags.forEach((tag) => {
-      config.addTag(tag.name, tag.description);
-    });
-  }
+  options.tags?.forEach((tag) => config.addTag(tag.name, tag.description));
+  if (options.enableBearerAuth) config.addBearerAuth();
 
-  if (options.enableBearerAuth) {
-    config.addBearerAuth();
-  }
-
-  const document = SwaggerModule.createDocument(app, config.build());
-  SwaggerModule.setup(options.path || 'api', app, document);
+  SwaggerModule.setup(options.path || 'api', app, SwaggerModule.createDocument(app, config.build()));
 }
 

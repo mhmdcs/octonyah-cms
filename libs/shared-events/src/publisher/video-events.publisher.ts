@@ -36,15 +36,13 @@ export class VideoEventsPublisher extends EventPublisherService {
     });
   }
 
-  private sanitizeVideo(video: Partial<Video>): VideoEventMessage<Record<string, unknown>>['video'] {
+  private sanitizeVideo(video: Partial<Video>) {
+    const { publicationDate, createdAt, updatedAt, ...rest } = video;
     return {
-      ...video,
-      tags: video.tags ?? [],
-      popularityScore: video.popularityScore ?? 0,
-      publicationDate: this.sanitizeDate(video.publicationDate),
-      createdAt: this.sanitizeDate(video.createdAt),
-      updatedAt: this.sanitizeDate(video.updatedAt),
-    } as Record<string, unknown>;
+      ...rest, tags: video.tags ?? [], popularityScore: video.popularityScore ?? 0,
+      publicationDate: this.sanitizeDate(publicationDate),
+      createdAt: this.sanitizeDate(createdAt), updatedAt: this.sanitizeDate(updatedAt),
+    };
   }
 }
 

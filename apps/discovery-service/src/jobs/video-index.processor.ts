@@ -21,66 +21,30 @@ export class VideoIndexProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<any>): Promise<void> {
-    switch (job.name) {
-      case INDEX_VIDEO_JOB:
-        await this.handleIndexVideo(job as Job<{ videoId: string }>);
-        break;
-      case REINDEX_ALL_JOB:
-        await this.handleReindexAll();
-        break;
-      case REMOVE_VIDEO_JOB:
-        await this.handleRemoval(job as Job<{ videoId: string }>);
-        break;
-      default:
-        return;
-    }
+  async process(job: Job<{ videoId?: string }>): Promise<void> {
+    const handlers: Record<string, () => Promise<void>> = {
+      [INDEX_VIDEO_JOB]: () => this.handleIndexVideo(job.data.videoId),
+      [REINDEX_ALL_JOB]: () => this.handleReindexAll(),
+      [REMOVE_VIDEO_JOB]: () => this.handleRemoval(job.data.videoId),
+    };
+    await handlers[job.name]?.();
   }
 
-  private async handleIndexVideo(job: Job<{ videoId: string }>) {
-    const { videoId } = job.data;
-    if (!videoId) {
-      return;
-    }
-
-    // Include soft-deleted videos to check their status
-    const video = await this.videoRepository.findOne({
-      where: { id: videoId },
-      withDeleted: true,
-    });
-    if (!video) {
-      return;
-    }
-
-    // If video is soft-deleted, remove it from Elasticsearch instead of indexing
-    if (video.deletedAt) {
-      await this.videoSearch.removeVideo(videoId);
-      return;
-    }
-
-    await this.videoSearch.indexVideo(video);
+  private async handleIndexVideo(videoId?: string) {
+    if (!videoId) return;
+    const video = await this.videoRepository.findOne({ where: { id: videoId }, withDeleted: true });
+    if (!video) return;
+    // If video is soft-deleted, remove from ES instead of indexing
+    video.deletedAt ? await this.videoSearch.removeVideo(videoId) : await this.videoSearch.indexVideo(video);
   }
 
   private async handleReindexAll() {
-    // Only index non-deleted videos (TypeORM automatically excludes soft-deleted)
-    const videos = await this.videoRepository.find({
-      order: { publicationDate: 'ASC' },
-    });
-
-    for (const video of videos) {
-      // Only index videos that are not soft-deleted
-      if (!video.deletedAt) {
-        await this.videoSearch.indexVideo(video);
-      }
-    }
+    // TypeORM automatically excludes soft-deleted videos
+    const videos = await this.videoRepository.find({ order: { publicationDate: 'ASC' } });
+    for (const video of videos) await this.videoSearch.indexVideo(video);
   }
 
-  private async handleRemoval(job: Job<{ videoId: string }>) {
-    const { videoId } = job.data;
-    if (!videoId) {
-      return;
-    }
-
-    await this.videoSearch.removeVideo(videoId);
+  private async handleRemoval(videoId?: string) {
+    if (videoId) await this.videoSearch.removeVideo(videoId);
   }
 }

@@ -37,14 +37,11 @@ export class RedisCacheService implements OnModuleDestroy {
 
   async get<T>(key: string): Promise<T | null> {
     const value = await this.client.get(key);
-    if (!value) {
-      return null;
-    }
-
+    if (!value) return null;
     try {
       return JSON.parse(value) as T;
-    } catch (error) {
-      this.logger.warn(`Failed to parse cache value for key ${key}`, error);
+    } catch {
+      this.logger.warn(`Failed to parse cache value for key ${key}`);
       return null;
     }
   }
