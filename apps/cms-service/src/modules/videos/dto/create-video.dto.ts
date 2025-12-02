@@ -72,10 +72,12 @@ export class CreateVideoDto {
   @IsString()
   videoUrl?: string;
 
-  @ApiPropertyOptional({ description: 'URL to the thumbnail image' })
+  @ApiPropertyOptional({
+    description: 'Thumbnail URL from source platform (e.g., YouTube thumbnail URL)',
+  })
   @IsOptional()
   @IsString()
-  thumbnailImageUrl?: string;
+  thumbnailUrl?: string;
 
   @ApiPropertyOptional({
     description: 'Source platform of the video',
@@ -98,11 +100,5 @@ export class CreateVideoDto {
   @IsString()
   embedUrl?: string;
 
-  @ApiPropertyOptional({
-    description: 'Original thumbnail URL from source platform',
-  })
-  @IsOptional()
-  @IsString()
-  originalThumbnailUrl?: string;
 }
 

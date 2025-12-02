@@ -20,7 +20,7 @@ import { Video, VideoType, VideoLanguage } from '@octonyah/shared-videos';
 import { NotFoundException } from '@nestjs/common';
 import { VideosService } from './videos.service';
 import { VideoEventsPublisher } from '@octonyah/shared-events';
-import { StorageService } from '@octonyah/shared-storage';
+import { VideoPlatformsService } from '@octonyah/shared-video-platforms';
 
 // Groups all tests related to the VideosService class
 describe('VideosService', () => {
@@ -63,10 +63,9 @@ describe('VideosService', () => {
           },
         },
         {
-          provide: StorageService,
+          provide: VideoPlatformsService,
           useValue: {
-            uploadFile: jest.fn(),
-            deleteFile: jest.fn(),
+            fetchMetadataFromUrl: jest.fn(),
           },
         },
       ],

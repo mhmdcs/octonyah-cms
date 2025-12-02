@@ -9,13 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-  UploadedFile,
-  UseInterceptors,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -32,7 +26,6 @@ import { ImportVideoDto } from './dto/import-video.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
-import { StorageService } from '@octonyah/shared-storage';
 
 
 @ApiTags('CMS Videos')
@@ -42,7 +35,6 @@ import { StorageService } from '@octonyah/shared-storage';
 export class VideosController {
   constructor(
     private readonly videosService: VideosService,
-    private readonly storageService: StorageService,
   ) {}
 
   @Post()
@@ -63,8 +55,8 @@ export class VideosController {
     summary: 'Import a video from external platform',
     description:
       'Import a video from YouTube or other supported platforms. ' +
-      'Automatically extracts metadata (title, description, duration, thumbnail) ' +
-      'and downloads the thumbnail to our storage.',
+      'Automatically extracts metadata (title, description, duration, thumbnail). ' +
+      'Platform thumbnail URL is stored directly.',
   })
   @ApiBody({ type: ImportVideoDto })
   @ApiResponse({
@@ -124,68 +116,5 @@ export class VideosController {
     return this.videosService.remove(id);
   }
 
-  @Post('upload/video')
-  @Roles('admin', 'editor')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Upload a video file' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 201, description: 'Video uploaded successfully' })
-  async uploadVideo(
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 500 * 1024 * 1024 }), // 500MB
-          new FileTypeValidator({ fileType: /(video\/.*)/ }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
-  ) {
-    const url = await this.storageService.uploadFile(file, 'videos');
-    return { url };
-  }
-
-  @Post('upload/thumbnail')
-  @Roles('admin', 'editor')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Upload a thumbnail image' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 201, description: 'Thumbnail uploaded successfully' })
-  async uploadThumbnail(
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
-          new FileTypeValidator({ fileType: /(image\/.*)/ }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
-  ) {
-    const url = await this.storageService.uploadFile(file, 'thumbnails');
-    return { url };
-  }
 }
 

@@ -6,7 +6,6 @@ import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { ImportVideoDto } from './dto/import-video.dto';
 import { VideoEventsPublisher } from '@octonyah/shared-events';
-import { StorageService } from '@octonyah/shared-storage';
 import { VideoPlatformsService } from '@octonyah/shared-video-platforms';
 
 @Injectable()
@@ -17,7 +16,6 @@ export class VideosService {
     @InjectRepository(Video)
     private readonly videoRepository: Repository<Video>,
     private readonly videoEventsPublisher: VideoEventsPublisher,
-    private readonly storageService: StorageService,
     private readonly videoPlatformsService: VideoPlatformsService,
   ) {}
 
@@ -34,12 +32,11 @@ export class VideosService {
       // Convert date string to Date object
       publicationDate: new Date(createVideoDto.publicationDate),
       videoUrl: createVideoDto.videoUrl,
-      thumbnailImageUrl: createVideoDto.thumbnailImageUrl,
+      thumbnailUrl: createVideoDto.thumbnailUrl,
       // Platform-related fields
       platform: createVideoDto.platform || VideoPlatform.NATIVE,
       platformVideoId: createVideoDto.platformVideoId,
       embedUrl: createVideoDto.embedUrl,
-      originalThumbnailUrl: createVideoDto.originalThumbnailUrl,
     });
     const saved = await this.videoRepository.save(video);
     this.videoEventsPublisher.videoCreated(saved);
@@ -48,8 +45,8 @@ export class VideosService {
 
   /**
    * Import a video from an external platform (e.g., YouTube).
-   * Automatically extracts metadata, downloads thumbnail to our storage,
-   * and creates the video record.
+   * Automatically extracts metadata and creates the video record.
+   * Stores the platform thumbnail URL directly (no download).
    *
    * @param importVideoDto - Import parameters with URL and optional overrides
    * @returns Created video record
@@ -76,22 +73,6 @@ export class VideosService {
       );
     }
 
-    // Download thumbnail from platform and upload to our storage
-    let thumbnailImageUrl: string | undefined;
-    try {
-      thumbnailImageUrl = await this.storageService.downloadAndUpload(
-        metadata.thumbnailUrl,
-        'thumbnails',
-      );
-      this.logger.log(`Uploaded thumbnail to: ${thumbnailImageUrl}`);
-    } catch (error) {
-      this.logger.warn(
-        `Failed to download thumbnail, using original URL: ${error}`,
-      );
-      // Fall back to original thumbnail URL if download fails
-      thumbnailImageUrl = metadata.thumbnailUrl;
-    }
-
     // Merge platform metadata with user overrides
     // User-provided values take precedence
     const mergedTags = this.mergeTags(metadata.tags, importVideoDto.tags);
@@ -109,13 +90,12 @@ export class VideosService {
       publicationDate: metadata.publishedAt,
       // For external videos, videoUrl is the original platform URL
       videoUrl: metadata.originalUrl,
-      // Thumbnail is stored in our storage
-      thumbnailImageUrl,
+      // Store platform thumbnail URL directly (no download)
+      thumbnailUrl: metadata.thumbnailUrl,
       // Platform-specific fields
       platform: metadata.platform,
       platformVideoId: metadata.platformVideoId,
       embedUrl: metadata.embedUrl,
-      originalThumbnailUrl: metadata.thumbnailUrl,
     });
 
     const saved = await this.videoRepository.save(video);
@@ -173,24 +153,6 @@ export class VideosService {
   async update(id: string, updateVideoDto: UpdateVideoDto): Promise<Video> {
     const video = await this.findOne(id);
     
-    // Delete old video file if it's being replaced
-    if (updateVideoDto.videoUrl !== undefined && video.videoUrl && video.videoUrl !== updateVideoDto.videoUrl) {
-      try {
-        await this.storageService.deleteFile(video.videoUrl);
-      } catch (error) {
-        this.logger.warn(`Failed to delete old video file: ${video.videoUrl}`, error);
-      }
-    }
-    
-    // Delete old thumbnail file if it's being replaced
-    if (updateVideoDto.thumbnailImageUrl !== undefined && video.thumbnailImageUrl && video.thumbnailImageUrl !== updateVideoDto.thumbnailImageUrl) {
-      try {
-        await this.storageService.deleteFile(video.thumbnailImageUrl);
-      } catch (error) {
-        this.logger.warn(`Failed to delete old thumbnail file: ${video.thumbnailImageUrl}`, error);
-      }
-    }
-    
     const updateData: Partial<Video> = {};
     if (updateVideoDto.title !== undefined) updateData.title = updateVideoDto.title;
     if (updateVideoDto.description !== undefined) updateData.description = updateVideoDto.description;
@@ -202,7 +164,7 @@ export class VideosService {
     if (updateVideoDto.popularityScore !== undefined) updateData.popularityScore = updateVideoDto.popularityScore;
     if (updateVideoDto.publicationDate !== undefined) updateData.publicationDate = new Date(updateVideoDto.publicationDate);
     if (updateVideoDto.videoUrl !== undefined) updateData.videoUrl = updateVideoDto.videoUrl;
-    if (updateVideoDto.thumbnailImageUrl !== undefined) updateData.thumbnailImageUrl = updateVideoDto.thumbnailImageUrl;
+    if (updateVideoDto.thumbnailUrl !== undefined) updateData.thumbnailUrl = updateVideoDto.thumbnailUrl;
 
     Object.assign(video, updateData);
     const updated = await this.videoRepository.save(video);
@@ -212,27 +174,8 @@ export class VideosService {
 
   async remove(id: string): Promise<void> {
     const video = await this.findOne(id);
-    await this.deleteVideoMediaFiles(video);
     await this.videoRepository.remove(video);
     this.videoEventsPublisher.videoDeleted({ id });
-  }
-
-  private async deleteVideoMediaFiles(video: Video): Promise<void> {
-    if (video.videoUrl) {
-      try {
-        await this.storageService.deleteFile(video.videoUrl);
-      } catch (error) {
-        this.logger.warn(`Failed to delete video file: ${video.videoUrl}`, error);
-      }
-    }
-
-    if (video.thumbnailImageUrl) {
-      try {
-        await this.storageService.deleteFile(video.thumbnailImageUrl);
-      } catch (error) {
-        this.logger.warn(`Failed to delete thumbnail file: ${video.thumbnailImageUrl}`, error);
-      }
-    }
   }
 
   private normalizeTags(tags?: string[]): string[] {

@@ -20,13 +20,11 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - CRUD operations for videos (video podcasts and documentaries)
 - **Video importing from external platforms** (YouTube support built-in, extensible for other platforms)
   - Automatic metadata extraction (title, description, duration, thumbnail, tags)
-  - Thumbnail download and storage to MinIO/S3 (avoids hitting external APIs on search)
+  - Platform thumbnail URLs stored directly (no download - YouTube thumbnails are CDN-hosted and reliable)
   - Duplicate detection to prevent re-importing the same video
-  - Platform-specific fields (embedUrl, platformVideoId, originalThumbnailUrl)
+  - Platform-specific fields (embedUrl, platformVideoId)
+  - Optional custom thumbnail uploads for editors
 - Metadata management (title, description, category, language, duration, publication date)
-- Media file management (video and thumbnail images) via MinIO/S3-compatible storage
-- File upload endpoints for videos and thumbnails
-- Automatic cleanup of media files when videos are deleted or updated
 - Input validation and error handling
 - RESTful API endpoints for frontend integration
 - Swagger documentation
@@ -60,14 +58,11 @@ flowchart TD
     %% CMS System
     A[CMS Service<br/>Port 3000]:::service
     B[(PostgreSQL<br/>Database)]:::database
-    M[MinIO / AWS S3<br/>Object Storage]:::storage
     
     I -->|create/update/delete| A
     I -->|import video URL| A
     A -->|fetches metadata| YT
-    A -->|downloads thumbnail| YT
     A -->|writes video data| B
-    A -->|stores thumbnails| M
     A -->|publishes events| C
 
     %% Event Bus
@@ -93,9 +88,9 @@ flowchart TD
     D -->|queries| G
     D -->|reads cache| E
 
-    %% Discovery API - returns our MinIO thumbnail URLs
+    %% Discovery API - returns platform thumbnail URLs
     U -->|search/browse| D
-    D -.->|returns MinIO<br/>thumbnail URLs| U
+    D -.->|returns thumbnail<br/>URLs| U
 
     %% Styling
     classDef actor fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000
@@ -158,14 +153,6 @@ flowchart TD
 - Decouples RabbitMQ event handling from heavy index writes
 - Allows triggering reindexing via HTTP without locking the main request cycle
 
-### 8. MinIO Object Storage (AWS S3-compatible)
-- MinIO provides S3-compatible object storage for media files (videos and thumbnail images)
-- Files are stored in organized folders (`videos/` and `thumbnails/`) with UUID-based naming
-- Storage service automatically creates the bucket on application startup
-- Media files are automatically deleted when videos are removed or when URLs are updated
-- Supports both direct access URLs and signed URLs for secure, time-limited access
-- Can be replaced with AWS S3 or other S3-compatible services by updating environment variables
-- **Thumbnails from imported videos are downloaded and stored locally** - search results return our MinIO URLs instead of external platform URLs, avoiding API rate limits and external dependencies
 
 ### 9. External Video Platform Integration (YouTube, etc.)
 - Pluggable provider architecture allows importing videos from external platforms
@@ -189,7 +176,6 @@ This repository follows a monorepo layout with two microservices and shared libr
 - `libs/shared-config` – Shared infrastructure configuration (database, Swagger, validation).
 - `libs/shared-events` – RabbitMQ event system (publishers, listeners, configuration).
 - `libs/shared-cache` – Redis caching module and service.
-- `libs/shared-storage` – S3-compatible object storage module for media files.
 - `libs/shared-video-platforms` – External video platform integration (YouTube API, metadata extraction, provider abstraction).
 
 Each service has its own entry point (`main.ts`), module tree, Swagger document, and can be deployed/scaled independently. Shared code is imported through path aliases (e.g., `@octonyah/shared-videos`, `@octonyah/shared-config`) to keep the services decoupled while avoiding duplication.
@@ -200,7 +186,6 @@ Supporting infrastructure (local/dev via Docker Compose):
 - `rabbitmq` – async event bus between services
 - `redis` – cache backing the discovery service and transport for BullMQ queues
 - `elasticsearch` – search/read model optimized for full-text queries, filtering, autocomplete
-- `minio` – S3-compatible object storage for media files (videos and thumbnails)
 - `bullmq workers` – discovery-service background processors that rebuild the search index
 
 ## Inter-service Communication
@@ -306,11 +291,6 @@ libs/
 │       ├── redis-cache.service.ts
 │       ├── cache.constants.ts
 │       └── index.ts
-├── shared-storage/                        # Object storage (S3/MinIO)
-│   └── src/
-│       ├── storage.module.ts
-│       ├── storage.service.ts
-│       └── index.ts
 └── shared-video-platforms/                # External platform integration
     └── src/
         ├── providers/
@@ -336,17 +316,17 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
    - **Imports videos from external platforms** (YouTube support built-in)
    - JWT-based authentication with role-based access control (admin, editor)
    - Validates input data using class-validator
-   - Manages video metadata and media files via shared storage library
-   - Downloads and stores thumbnails from external platforms to MinIO/S3
+   - Manages video metadata
+   - Stores platform thumbnail URLs directly (no download - YouTube thumbnails are CDN-hosted and reliable)
    - Publishes events to RabbitMQ when videos are created/updated/deleted
-   - Uses shared libraries: `shared-videos`, `shared-config`, `shared-events`, `shared-storage`, `shared-video-platforms`
+   - Uses shared libraries: `shared-videos`, `shared-config`, `shared-events`, `shared-video-platforms`
 
 2. **Discovery microservice (`apps/discovery-service`)** – Public search and exploration
    - Provides search functionality with full-text search via Elasticsearch
    - Implements filtering, pagination, and browse experiences
    - Redis-backed caching with automatic invalidation via RabbitMQ events
    - BullMQ-powered background jobs for Elasticsearch reindexing
-   - Returns **our MinIO thumbnail URLs** (not external platform URLs) for imported videos
+   - Returns platform thumbnail URLs directly
    - Exposes only read APIs to keep the surface limited and cache-friendly
    - Uses shared libraries: `shared-videos`, `shared-config`, `shared-events`, `shared-cache`
 
@@ -374,13 +354,7 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
    - Provides caching utilities with TTL support
    - Used by discovery service for read-heavy endpoints
 
-7. **Shared Storage (`libs/shared-storage`)**
-   - S3-compatible object storage module (MinIO/AWS S3)
-   - Handles media file uploads, deletions, and URL generation
-   - Downloads and stores thumbnails from external platforms
-   - Used by CMS service for video and thumbnail management
-
-8. **Shared Video Platforms (`libs/shared-video-platforms`)**
+7. **Shared Video Platforms (`libs/shared-video-platforms`)**
    - Pluggable provider architecture for external video platforms
    - YouTube provider with Data API v3 integration
    - Auto-detection of platform from URL
@@ -404,9 +378,6 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
 ### Search & Read Models
 - **Elasticsearch** - Secondary index optimized for full-text search, filters, and high-concurrency read/query workloads
 
-### Object Storage
-- **MinIO** - AWS S3-compatible object storage for media files (videos and thumbnail images)
-- **AWS S3 SDK** - Client library for S3-compatible storage operations (upload, delete, signed URLs)
 
 ### Database & ORM
 - **PostgreSQL** - Reliable relational database, easy to run locally via Docker
@@ -475,11 +446,6 @@ The application uses environment variables for configuration. Edit the `.env` fi
 - `ELASTICSEARCH_NODE` - Elasticsearch node URL (default: `http://localhost:9200`)
 - `ELASTICSEARCH_USERNAME` / `ELASTICSEARCH_PASSWORD` - Optional basic auth credentials
 - `ELASTICSEARCH_INDEX` - Index name for videos (default: `videos`)
-- `S3_ENDPOINT` - MinIO/S3 endpoint URL (default: `http://localhost:9000`, use `http://minio:9000` in Docker)
-- `S3_ACCESS_KEY` - S3 access key (default: `minioadmin`)
-- `S3_SECRET_KEY` - S3 secret key (default: `minioadmin`)
-- `S3_BUCKET` - S3 bucket name for storing media files (default: `videos-media`)
-- `S3_REGION` - S3 region (default: `us-east-1`)
 - `YOUTUBE_API_KEY` - YouTube Data API v3 key (required for importing YouTube videos, see below)
 - `NODE_ENV` - Environment mode (development/production)
 
@@ -510,7 +476,6 @@ Exposed endpoints:
 - Discovery service → http://localhost:3001 (Swagger at `/api`)
 - RabbitMQ → AMQP `localhost:5672`, management UI `http://localhost:15672` (guest/guest)
 - Redis → `localhost:6379`
-- MinIO → API `http://localhost:9000`, Console `http://localhost:9001` (minioadmin/minioadmin)
 - BullMQ workers → run inside discovery-service container, exposed via logs/queues
 - Postgres → `localhost:5432` (credentials defined in `docker-compose.yml`)
 
@@ -557,9 +522,7 @@ Swagger UI provides:
 - `GET /cms/videos` - Get all videos
 - `GET /cms/videos/:id` - Get a video by ID
 - `PATCH /cms/videos/:id` - Update a video
-- `DELETE /cms/videos/:id` - Delete a video (also removes associated media files from storage)
-- `POST /cms/videos/upload/video` - Upload a video file (max 500MB, multipart/form-data)
-- `POST /cms/videos/upload/thumbnail` - Upload a thumbnail image (max 10MB, multipart/form-data)
+- `DELETE /cms/videos/:id` - Delete a video
 
 #### Discovery service (public)
 - Base URL: `http://localhost:${DISCOVERY_PORT}` (default `http://localhost:3001`)
@@ -637,26 +600,12 @@ curl -X POST http://localhost:3000/cms/videos \
     "language": "ar",
     "duration": 3600,
     "publicationDate": "2024-01-15",
-    "videoUrl": "http://minio:9000/videos-media/videos/uuid.mp4",
-    "thumbnailImageUrl": "http://minio:9000/videos-media/thumbnails/uuid.jpg"
+    "videoUrl": "https://example.com/video.mp4",
+    "thumbnailUrl": "https://example.com/thumbnail.jpg"
   }'
 ```
 
-**Upload a video file:**
-```bash
-curl -X POST http://localhost:3000/cms/videos/upload/video \
-  -H "Authorization: Bearer <your-jwt-token>" \
-  -F "file=@/path/to/video.mp4"
-```
-
-**Upload a thumbnail image:**
-```bash
-curl -X POST http://localhost:3000/cms/videos/upload/thumbnail \
-  -H "Authorization: Bearer <your-jwt-token>" \
-  -F "file=@/path/to/thumbnail.jpg"
-```
-
-The upload endpoints return a JSON response with the `url` field containing the full URL to the uploaded file, which can then be used in the `videoUrl` or `thumbnailImageUrl` fields when creating/updating videos.
+The `thumbnailUrl` field stores the platform thumbnail URL directly (e.g., YouTube thumbnail URL).
 
 **Import a YouTube video:**
 ```bash
@@ -673,13 +622,12 @@ curl -X POST http://localhost:3000/cms/videos/import \
 The import endpoint:
 1. Detects the platform from the URL (YouTube in this case)
 2. Calls the YouTube Data API to fetch metadata (title, description, duration, thumbnail, tags)
-3. Downloads the thumbnail and stores it in MinIO/S3
+3. Stores the platform thumbnail URL directly (no download - YouTube thumbnails are CDN-hosted and reliable)
 4. Creates the video record with platform-specific fields:
    - `platform: "youtube"`
    - `platformVideoId: "dQw4w9WgXcQ"`
    - `embedUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"`
-   - `thumbnailImageUrl: "http://minio:9000/programs-media/thumbnails/uuid.jpg"` (our storage)
-   - `originalThumbnailUrl: "https://i.ytimg.com/vi/.../maxresdefault.jpg"` (original for reference)
+   - `thumbnailUrl: "https://i.ytimg.com/vi/.../maxresdefault.jpg"` (platform thumbnail URL)
 5. Publishes event to RabbitMQ for discovery service to index
 
 Optional fields for overriding extracted metadata:

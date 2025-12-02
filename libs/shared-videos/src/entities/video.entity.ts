@@ -67,8 +67,13 @@ export class Video {
   @Column({ type: 'varchar', length: 500, nullable: true })
   videoUrl?: string;
 
+  /**
+   * Thumbnail URL from the source platform (e.g., YouTube thumbnail URL)
+   * For imported videos, this is the original platform thumbnail URL.
+   * For native videos, this can be set manually.
+   */
   @Column({ type: 'varchar', length: 500, nullable: true })
-  thumbnailImageUrl?: string;
+  thumbnailUrl?: string;
 
   /**
    * Source platform of the video (native, youtube, etc.)
@@ -91,12 +96,6 @@ export class Video {
   @Column({ type: 'varchar', length: 500, nullable: true })
   embedUrl?: string;
 
-  /**
-   * Original thumbnail URL from the source platform
-   * Stored for reference; actual thumbnail served from our storage
-   */
-  @Column({ type: 'varchar', length: 500, nullable: true })
-  originalThumbnailUrl?: string;
 
   // Auto set timestamp thru TypeORM
   @CreateDateColumn()

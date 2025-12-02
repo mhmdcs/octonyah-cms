@@ -15,11 +15,10 @@ export interface VideoSearchDocument {
   updatedAt?: string;
   // Media URLs
   videoUrl?: string;
-  thumbnailImageUrl?: string;
+  thumbnailUrl?: string;
   // Platform-related fields
   platform: VideoPlatform;
   platformVideoId?: string;
   embedUrl?: string;
-  originalThumbnailUrl?: string;
 }
 

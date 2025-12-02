@@ -57,12 +57,11 @@ export class VideoSearchService implements OnModuleInit {
               updatedAt: { type: 'date' },
               // Media URLs (not indexed, just stored)
               videoUrl: { type: 'keyword', index: false },
-              thumbnailImageUrl: { type: 'keyword', index: false },
+              thumbnailUrl: { type: 'keyword', index: false },
               // Platform-related fields
               platform: { type: 'keyword' },
               platformVideoId: { type: 'keyword' },
               embedUrl: { type: 'keyword', index: false },
-              originalThumbnailUrl: { type: 'keyword', index: false },
             },
           },
         });
@@ -212,14 +211,13 @@ export class VideoSearchService implements OnModuleInit {
         this.toIso(video.publicationDate) ?? new Date().toISOString(),
       createdAt: this.toIso(video.createdAt),
       updatedAt: this.toIso(video.updatedAt),
-      // Media URLs - serve our own thumbnails, not external ones
+      // Media URLs
       videoUrl: video.videoUrl,
-      thumbnailImageUrl: video.thumbnailImageUrl,
+      thumbnailUrl: video.thumbnailUrl,
       // Platform-related fields
       platform: video.platform ?? VideoPlatform.NATIVE,
       platformVideoId: video.platformVideoId,
       embedUrl: video.embedUrl,
-      originalThumbnailUrl: video.originalThumbnailUrl,
     };
   }
 
@@ -243,14 +241,13 @@ export class VideoSearchService implements OnModuleInit {
         : undefined,
       createdAt: doc.createdAt ? new Date(doc.createdAt) : undefined,
       updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : undefined,
-      // Media URLs - thumbnailImageUrl is our stored version, not external
+      // Media URLs
       videoUrl: doc.videoUrl,
-      thumbnailImageUrl: doc.thumbnailImageUrl,
+      thumbnailUrl: doc.thumbnailUrl,
       // Platform-related fields
       platform: doc.platform ?? VideoPlatform.NATIVE,
       platformVideoId: doc.platformVideoId,
       embedUrl: doc.embedUrl,
-      originalThumbnailUrl: doc.originalThumbnailUrl,
     } as Video;
   }
 
