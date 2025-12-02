@@ -72,6 +72,7 @@ flowchart TD
     %% Discovery Service
     D[Discovery Service<br/>Port 3001]:::service
     D -->|invalidates cache| E
+    
     D -->|enqueues jobs| E
 
     %% Cache & Queue
@@ -88,9 +89,8 @@ flowchart TD
     D -->|queries| G
     D -->|reads cache| E
 
-    %% Discovery API - returns platform thumbnail URLs
+    %% Discovery API
     U -->|search/browse| D
-    D -.->|returns thumbnail<br/>URLs| U
 
     %% Styling
     classDef actor fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000

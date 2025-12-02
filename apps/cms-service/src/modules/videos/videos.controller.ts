@@ -55,8 +55,7 @@ export class VideosController {
     summary: 'Import a video from external platform',
     description:
       'Import a video from YouTube or other supported platforms. ' +
-      'Automatically extracts metadata (title, description, duration, thumbnail). ' +
-      'Platform thumbnail URL is stored directly.',
+      'Automatically extracts metadata (title, description, duration, thumbnail).',
   })
   @ApiBody({ type: ImportVideoDto })
   @ApiResponse({

@@ -46,7 +46,6 @@ export class VideosService {
   /**
    * Import a video from an external platform (e.g., YouTube).
    * Automatically extracts metadata and creates the video record.
-   * Stores the platform thumbnail URL directly (no download).
    *
    * @param importVideoDto - Import parameters with URL and optional overrides
    * @returns Created video record
@@ -90,7 +89,6 @@ export class VideosService {
       publicationDate: metadata.publishedAt,
       // For external videos, videoUrl is the original platform URL
       videoUrl: metadata.originalUrl,
-      // Store platform thumbnail URL directly (no download)
       thumbnailUrl: metadata.thumbnailUrl,
       // Platform-specific fields
       platform: metadata.platform,
