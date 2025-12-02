@@ -86,86 +86,56 @@ export class YouTubeProvider implements PlatformProvider {
     return null;
   }
 
-  /**
-   * Fetches video metadata from YouTube Data API v3
-   */
   async fetchMetadata(videoId: string): Promise<VideoMetadata> {
-    if (!this.apiKey) {
-      throw new BadRequestException(
-        'YouTube API key not configured. Please set YOUTUBE_API_KEY environment variable.',
-      );
-    }
+    if (!this.apiKey) throw new BadRequestException('YouTube API key not configured. Please set YOUTUBE_API_KEY environment variable.');
 
+    try {
+      const data = await this.fetchFromApi(videoId);
+      if (!data.items?.length) throw new BadRequestException(`Video not found on YouTube: ${videoId}`);
+      return this.buildMetadata(videoId, data.items[0]);
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      this.logger.error(`Failed to fetch YouTube video metadata: ${error}`);
+      throw new BadRequestException(`Failed to fetch video metadata from YouTube: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async fetchFromApi(videoId: string): Promise<YouTubeVideoResponse> {
     const url = new URL(`${this.baseApiUrl}/videos`);
     url.searchParams.set('id', videoId);
     url.searchParams.set('part', 'snippet,contentDetails,statistics');
     url.searchParams.set('key', this.apiKey);
 
-    try {
-      const response = await fetch(url.toString());
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        this.logger.error(
-          `YouTube API error: ${response.status} - ${errorBody}`,
-        );
-        throw new BadRequestException(
-          `Failed to fetch video from YouTube: ${response.status}`,
-        );
-      }
-
-      const data: YouTubeVideoResponse = await response.json();
-
-      if (!data.items || data.items.length === 0) {
-        throw new BadRequestException(
-          `Video not found on YouTube: ${videoId}`,
-        );
-      }
-
-      const video = data.items[0];
-      const snippet = video.snippet;
-      const thumbnails = snippet.thumbnails;
-
-      // Get best available thumbnail (prefer higher resolution)
-      const thumbnailUrl =
-        thumbnails.maxres?.url ||
-        thumbnails.standard?.url ||
-        thumbnails.high?.url ||
-        thumbnails.medium?.url ||
-        thumbnails.default?.url ||
-        this.getThumbnailUrl(videoId);
-
-      return {
-        platform: VideoPlatform.YOUTUBE,
-        platformVideoId: videoId,
-        title: snippet.title,
-        description: snippet.description || undefined,
-        durationSeconds: parseIso8601DurationToSeconds(
-          video.contentDetails.duration,
-        ),
-        thumbnailUrl,
-        embedUrl: this.getEmbedUrl(videoId),
-        originalUrl: `https://www.youtube.com/watch?v=${videoId}`,
-        publishedAt: new Date(snippet.publishedAt),
-        channelName: snippet.channelTitle,
-        channelId: snippet.channelId,
-        tags: snippet.tags,
-        viewCount: video.statistics?.viewCount
-          ? parseInt(video.statistics.viewCount, 10)
-          : undefined,
-        likeCount: video.statistics?.likeCount
-          ? parseInt(video.statistics.likeCount, 10)
-          : undefined,
-      };
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      this.logger.error(`Failed to fetch YouTube video metadata: ${error}`);
-      throw new BadRequestException(
-        `Failed to fetch video metadata from YouTube: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      this.logger.error(`YouTube API error: ${response.status} - ${await response.text()}`);
+      throw new BadRequestException(`Failed to fetch video from YouTube: ${response.status}`);
     }
+    return response.json();
+  }
+
+  private buildMetadata(videoId: string, video: YouTubeVideoResponse['items'][0]): VideoMetadata {
+    const { snippet, contentDetails, statistics } = video;
+    return {
+      platform: VideoPlatform.YOUTUBE,
+      platformVideoId: videoId,
+      title: snippet.title,
+      description: snippet.description || undefined,
+      durationSeconds: parseIso8601DurationToSeconds(contentDetails.duration),
+      thumbnailUrl: this.getBestThumbnail(snippet.thumbnails, videoId),
+      embedUrl: this.getEmbedUrl(videoId),
+      originalUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      publishedAt: new Date(snippet.publishedAt),
+      channelName: snippet.channelTitle,
+      channelId: snippet.channelId,
+      tags: snippet.tags,
+      viewCount: statistics?.viewCount ? parseInt(statistics.viewCount, 10) : undefined,
+      likeCount: statistics?.likeCount ? parseInt(statistics.likeCount, 10) : undefined,
+    };
+  }
+
+  private getBestThumbnail(thumbnails: YouTubeVideoResponse['items'][0]['snippet']['thumbnails'], videoId: string): string {
+    return thumbnails.maxres?.url || thumbnails.standard?.url || thumbnails.high?.url || thumbnails.medium?.url || thumbnails.default?.url || this.getThumbnailUrl(videoId);
   }
 
   /**

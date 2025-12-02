@@ -6,7 +6,7 @@ import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { ImportVideoDto } from './dto/import-video.dto';
 import { VideoEventsPublisher } from '@octonyah/shared-events';
-import { VideoPlatformsService } from '@octonyah/shared-video-platforms';
+import { VideoPlatformsService, VideoMetadata } from '@octonyah/shared-video-platforms';
 
 @Injectable()
 export class VideosService {
@@ -33,68 +33,40 @@ export class VideosService {
     return saved;
   }
 
-  /**
-   * Import a video from an external platform (e.g., YouTube).
-   * Automatically extracts metadata and creates the video record.
-   *
-   * @param importVideoDto - Import parameters with URL and optional overrides
-   * @returns Created video record
-   */
-  async importFromPlatform(importVideoDto: ImportVideoDto): Promise<Video> {
-    this.logger.log(`Importing video from URL: ${importVideoDto.url}`);
+  async importFromPlatform(dto: ImportVideoDto): Promise<Video> {
+    this.logger.log(`Importing video from URL: ${dto.url}`);
+    const metadata = await this.videoPlatformsService.fetchMetadataFromUrl(dto.url);
+    await this.ensureNotDuplicate(metadata.platform, metadata.platformVideoId);
 
-    // Detect platform and extract metadata from platform API
-    const metadata = await this.videoPlatformsService.fetchMetadataFromUrl(
-      importVideoDto.url,
-    );
+    const video = this.videoRepository.create(this.buildImportedVideo(dto, metadata));
+    const saved = await this.videoRepository.save(video);
+    this.logger.log(`Successfully imported video: ${saved.id} from ${metadata.platform}`);
+    this.videoEventsPublisher.videoCreated(saved);
+    return saved;
+  }
 
-    // Check if video already exists (avoid duplicates)
-    const existingVideo = await this.videoRepository.findOne({
-      where: {
-        platform: metadata.platform,
-        platformVideoId: metadata.platformVideoId,
-      },
-    });
+  private async ensureNotDuplicate(platform: VideoPlatform, platformVideoId: string): Promise<void> {
+    const existing = await this.videoRepository.findOne({ where: { platform, platformVideoId } });
+    if (existing) throw new ConflictException(`Video already imported: ${existing.id} (${platform}:${platformVideoId})`);
+  }
 
-    if (existingVideo) {
-      throw new ConflictException(
-        `Video already imported: ${existingVideo.id} (${metadata.platform}:${metadata.platformVideoId})`,
-      );
-    }
-
-    // Merge platform metadata with user overrides
-    // User-provided values take precedence
-    const mergedTags = this.mergeTags(metadata.tags, importVideoDto.tags);
-
-    const video = this.videoRepository.create({
-      // Use user override if provided, otherwise use platform metadata
-      title: importVideoDto.title || metadata.title,
-      description: importVideoDto.description || metadata.description,
-      category: importVideoDto.category,
-      type: importVideoDto.type,
-      language: importVideoDto.language || VideoLanguage.ARABIC,
+  private buildImportedVideo(dto: ImportVideoDto, metadata: VideoMetadata) {
+    return {
+      title: dto.title || metadata.title,
+      description: dto.description || metadata.description,
+      category: dto.category,
+      type: dto.type,
+      language: dto.language || VideoLanguage.ARABIC,
       duration: metadata.durationSeconds,
-      tags: mergedTags,
-      popularityScore: importVideoDto.popularityScore ?? 0,
+      tags: this.mergeTags(metadata.tags, dto.tags),
+      popularityScore: dto.popularityScore ?? 0,
       publicationDate: metadata.publishedAt,
-      // For external videos, videoUrl is the original platform URL
       videoUrl: metadata.originalUrl,
       thumbnailUrl: metadata.thumbnailUrl,
-      // Platform-specific fields
       platform: metadata.platform,
       platformVideoId: metadata.platformVideoId,
       embedUrl: metadata.embedUrl,
-    });
-
-    const saved = await this.videoRepository.save(video);
-    this.logger.log(
-      `Successfully imported video: ${saved.id} from ${metadata.platform}`,
-    );
-
-    // Publish event for discovery service to index
-    this.videoEventsPublisher.videoCreated(saved);
-
-    return saved;
+    };
   }
 
   /** Merge tags from platform and user input, removing duplicates (case-insensitive) */

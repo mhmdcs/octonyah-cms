@@ -34,135 +34,78 @@ export class VideoSearchService implements OnModuleInit {
 
   private async ensureIndex() {
     try {
-      const indexExists = await this.esService.indices.exists({
+      if (await this.esService.indices.exists({ index: this.indexName })) return;
+      await this.esService.indices.create({
         index: this.indexName,
-      });
-
-      if (!indexExists) {
-        await this.esService.indices.create({
-          index: this.indexName,
-          mappings: {
-            properties: {
-              id: { type: 'keyword' },
-              title: { type: 'search_as_you_type' },
-              description: { type: 'text' },
-              category: { type: 'keyword' },
-              type: { type: 'keyword' },
-              language: { type: 'keyword' },
-              tags: { type: 'keyword' },
-              duration: { type: 'integer' },
-              popularityScore: { type: 'integer' },
-              publicationDate: { type: 'date' },
-              createdAt: { type: 'date' },
-              updatedAt: { type: 'date' },
-              deletedAt: { type: 'date' },
-              // Media URLs (not indexed, just stored)
-              videoUrl: { type: 'keyword', index: false },
-              thumbnailUrl: { type: 'keyword', index: false },
-              // Platform-related fields
-              platform: { type: 'keyword' },
-              platformVideoId: { type: 'keyword' },
-              embedUrl: { type: 'keyword', index: false },
-            },
+        mappings: {
+          properties: {
+            id: { type: 'keyword' },
+            title: { type: 'search_as_you_type' },
+            description: { type: 'text' },
+            category: { type: 'keyword' },
+            type: { type: 'keyword' },
+            language: { type: 'keyword' },
+            tags: { type: 'keyword' },
+            duration: { type: 'integer' },
+            popularityScore: { type: 'integer' },
+            publicationDate: { type: 'date' },
+            createdAt: { type: 'date' },
+            updatedAt: { type: 'date' },
+            deletedAt: { type: 'date' },
+            videoUrl: { type: 'keyword', index: false },
+            thumbnailUrl: { type: 'keyword', index: false },
+            platform: { type: 'keyword' },
+            platformVideoId: { type: 'keyword' },
+            embedUrl: { type: 'keyword', index: false },
           },
-        });
-
-        this.logger.log(`Created Elasticsearch index ${this.indexName}`);
-      }
+        },
+      });
+      this.logger.log(`Created Elasticsearch index ${this.indexName}`);
     } catch (error) {
       this.logger.error('Failed to ensure Elasticsearch index', error);
     }
   }
 
   async search(dto: SearchVideosDto): Promise<SearchResponseDto> {
-    const {
-      q,
-      category,
-      type,
-      language,
-      tags,
-      page = 1,
-      limit = 20,
-      sort,
-      startDate,
-      endDate,
-    } = dto;
+    const { page = 1, limit = 20, sort } = dto;
+    const query = { bool: { must: this.buildMustClause(dto), filter: this.buildFilterClause(dto) } };
 
-    const from = (page - 1) * limit;
-
-    const must: any[] = [];
-    if (q) {
-      must.push({
-        multi_match: {
-          query: q,
-          fields: ['title^3', 'description', 'tags'],
-          type: 'best_fields',
-          fuzziness: 'AUTO',
-        },
+    try {
+      const response = await this.esService.search<VideoSearchDocument>({
+        index: this.indexName, from: (page - 1) * limit, size: limit, query, sort: this.buildSort(sort),
       });
+      return this.buildSearchResponse(response, page, limit);
+    } catch (error) {
+      this.logger.error('Elasticsearch search failed', error);
+      return { data: [], total: 0, page, limit, totalPages: 0, hasNext: false, hasPrev: false };
     }
+  }
 
+  private buildMustClause({ q }: SearchVideosDto): any[] {
+    if (!q) return [];
+    return [{ multi_match: { query: q, fields: ['title^3', 'description', 'tags'], type: 'best_fields', fuzziness: 'AUTO' } }];
+  }
+
+  private buildFilterClause({ category, type, language, tags, startDate, endDate }: SearchVideosDto): any[] {
     const filter: any[] = [];
     if (category) filter.push({ term: { category } });
     if (type) filter.push({ term: { type } });
     if (language) filter.push({ term: { language } });
-    if (tags?.length) {
-      filter.push({ terms: { tags } });
-    }
+    if (tags?.length) filter.push({ terms: { tags } });
     if (startDate || endDate) {
       const range: Record<string, string> = {};
       if (startDate) range.gte = startDate;
       if (endDate) range.lte = endDate;
       filter.push({ range: { publicationDate: range } });
     }
+    return filter;
+  }
 
-    const query: Record<string, any> = {
-      bool: {
-        must,
-        filter,
-      },
-    };
-
-    const sortClause = this.buildSort(sort);
-
-    try {
-      const response = await this.esService.search<VideoSearchDocument>({
-        index: this.indexName,
-        from,
-        size: limit,
-        query,
-        sort: sortClause,
-      });
-
-      const total = (response.hits.total as SearchTotalHits).value;
-
-      const data = response.hits.hits
-        .map((hit) => this.toVideo(hit._source))
-        .filter((video): video is Video => !!video);
-
-      const totalPages = Math.ceil(total / limit) || 1;
-
-      return {
-        data,
-        total,
-        page,
-        limit,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      };
-    } catch (error) {
-      this.logger.error('Elasticsearch search failed', error);
-      return {
-        data: [],
-        total: 0,
-        page,
-        limit,
-        totalPages: 0,
-        hasNext: false,
-        hasPrev: false,
-      };
-    }
+  private buildSearchResponse(response: any, page: number, limit: number): SearchResponseDto {
+    const total = (response.hits.total as SearchTotalHits).value;
+    const data = response.hits.hits.map((hit: any) => this.toVideo(hit._source)).filter((v: Video | null): v is Video => !!v);
+    const totalPages = Math.ceil(total / limit) || 1;
+    return { data, total, page, limit, totalPages, hasNext: page < totalPages, hasPrev: page > 1 };
   }
 
   async indexVideo(video: Partial<Video>): Promise<void> {

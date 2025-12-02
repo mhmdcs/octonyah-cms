@@ -23,67 +23,55 @@ export class CleanupSoftDeletesProcessor extends WorkerHost {
     if (job.name === CLEANUP_SOFT_DELETES_JOB) await this.cleanupOldSoftDeletes();
   }
 
-  /**
-   * Permanently deletes videos that were soft-deleted more than 90 days ago
-   */
   private async cleanupOldSoftDeletes(): Promise<void> {
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-
-    this.logger.log(
-      `Starting cleanup of soft-deleted videos older than ${ninetyDaysAgo.toISOString()}`,
-    );
+    const cutoffDate = this.getCutoffDate(90);
+    this.logger.log(`Starting cleanup of soft-deleted videos older than ${cutoffDate.toISOString()}`);
 
     try {
-      // Find all videos that were soft-deleted more than 90 days ago
-      // Need to use withDeleted() to include soft-deleted records
-      const softDeletedVideos = await this.videoRepository
-        .createQueryBuilder('video')
-        .withDeleted() // Include soft-deleted records
-        .where('video.deletedAt IS NOT NULL')
-        .andWhere('video.deletedAt < :cutoffDate', {
-          cutoffDate: ninetyDaysAgo,
-        })
-        .getMany();
-
-      if (softDeletedVideos.length === 0) {
+      const videos = await this.findExpiredSoftDeletes(cutoffDate);
+      if (!videos.length) {
         this.logger.log('No old soft-deleted videos found to clean up');
         return;
       }
 
-      this.logger.log(
-        `Found ${softDeletedVideos.length} videos to permanently delete`,
-      );
-
-      const videoIds = softDeletedVideos.map((v) => v.id);
-
-      // Remove from Elasticsearch first
-      for (const videoId of videoIds) {
-        try {
-          await this.videoSearch.removeVideo(videoId);
-        } catch (error) {
-          this.logger.warn(
-            `Failed to remove video ${videoId} from Elasticsearch: ${error}`,
-          );
-          // Continue with deletion even if ES removal fails
-        }
-      }
-
-      // Permanently delete from database
-      // Use raw delete query to bypass TypeORM soft delete protection
-      await this.videoRepository
-        .createQueryBuilder()
-        .delete()
-        .where('id IN (:...ids)', { ids: videoIds })
-        .execute();
-
-      this.logger.log(
-        `Successfully permanently deleted ${videoIds.length} videos`,
-      );
+      this.logger.log(`Found ${videos.length} videos to permanently delete`);
+      const ids = videos.map((v) => v.id);
+      await this.removeFromSearchIndex(ids);
+      await this.permanentlyDeleteFromDb(ids);
+      this.logger.log(`Successfully permanently deleted ${ids.length} videos`);
     } catch (error) {
       this.logger.error('Failed to cleanup old soft-deleted videos', error);
       throw error;
     }
+  }
+
+  private getCutoffDate(daysAgo: number): Date {
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    return date;
+  }
+
+  private async findExpiredSoftDeletes(cutoffDate: Date): Promise<Video[]> {
+    return this.videoRepository
+      .createQueryBuilder('video')
+      .withDeleted()
+      .where('video.deletedAt IS NOT NULL')
+      .andWhere('video.deletedAt < :cutoffDate', { cutoffDate })
+      .getMany();
+  }
+
+  private async removeFromSearchIndex(ids: string[]): Promise<void> {
+    for (const id of ids) {
+      try {
+        await this.videoSearch.removeVideo(id);
+      } catch (error) {
+        this.logger.warn(`Failed to remove video ${id} from Elasticsearch: ${error}`);
+      }
+    }
+  }
+
+  private async permanentlyDeleteFromDb(ids: string[]): Promise<void> {
+    await this.videoRepository.createQueryBuilder().delete().where('id IN (:...ids)', { ids }).execute();
   }
 }
 

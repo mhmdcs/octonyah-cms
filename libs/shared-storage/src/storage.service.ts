@@ -52,140 +52,59 @@ export class StorageService implements OnModuleInit {
     }
   }
 
-  async uploadFile(file: Express.Multer.File, folder: string = 'uploads'): Promise<string> {
-    const fileExtension = file.originalname.split('.').pop();
-    const fileName = `${folder}/${uuidv4()}.${fileExtension}`;
-
-    await this.s3Client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: fileName,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      }),
-    );
-
-    // Return the public URL (MinIO uses path-style URLs)
-    const endpoint = this.configService.get<string>('S3_ENDPOINT', 'http://localhost:9000');
-    return `${endpoint}/${this.bucket}/${fileName}`;
+  async uploadFile(file: Express.Multer.File, folder = 'uploads'): Promise<string> {
+    const ext = file.originalname.split('.').pop();
+    const key = `${folder}/${uuidv4()}.${ext}`;
+    await this.putObject(key, file.buffer, file.mimetype);
+    return this.buildPublicUrl(key);
   }
 
   async deleteFile(fileUrl: string): Promise<void> {
-    // Extract the key from the URL
-    const url = new URL(fileUrl);
-    const key = url.pathname.replace(`/${this.bucket}/`, '');
-
-    await this.s3Client.send(
-      new DeleteObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-      }),
-    );
+    await this.s3Client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: this.extractKey(fileUrl) }));
   }
 
-  async getSignedUrl(fileUrl: string, expiresIn: number = 3600): Promise<string> {
-    const url = new URL(fileUrl);
-    const key = url.pathname.replace(`/${this.bucket}/`, '');
-
-    const command = new GetObjectCommand({
-      Bucket: this.bucket,
-      Key: key,
-    });
-
-    return await getSignedUrl(this.s3Client, command, { expiresIn });
+  async getSignedUrl(fileUrl: string, expiresIn = 3600): Promise<string> {
+    return getSignedUrl(this.s3Client, new GetObjectCommand({ Bucket: this.bucket, Key: this.extractKey(fileUrl) }), { expiresIn });
   }
 
-  /**
-   * Downloads an image from a URL and uploads it to storage.
-   * Useful for importing thumbnails from external platforms like YouTube.
-   *
-   * @param sourceUrl - URL of the image to download
-   * @param folder - Folder/prefix in storage (default: 'thumbnails')
-   * @returns URL of the uploaded file in our storage
-   */
-  async downloadAndUpload(
-    sourceUrl: string,
-    folder: string = 'thumbnails',
-  ): Promise<string> {
+  private extractKey(fileUrl: string): string {
+    return new URL(fileUrl).pathname.replace(`/${this.bucket}/`, '');
+  }
+
+  private buildPublicUrl(key: string): string {
+    return `${this.configService.get<string>('S3_ENDPOINT', 'http://localhost:9000')}/${this.bucket}/${key}`;
+  }
+
+  private async putObject(key: string, body: Buffer, contentType: string): Promise<void> {
+    await this.s3Client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }));
+  }
+
+  async downloadAndUpload(sourceUrl: string, folder = 'thumbnails'): Promise<string> {
     try {
       this.logger.debug(`Downloading image from: ${sourceUrl}`);
-
-      const response = await fetch(sourceUrl);
-      if (!response.ok) {
-        throw new Error(
-          `Failed to download image: ${response.status} ${response.statusText}`,
-        );
-      }
-
-      // Get content type from response or default to jpeg
-      const contentType =
-        response.headers.get('content-type') || 'image/jpeg';
-
-      const extension = EXTENSION_MAP[contentType] || 'jpg';
-
-      // Generate unique filename
-      const fileName = `${folder}/${uuidv4()}.${extension}`;
-
-      // Read the image as buffer
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-
-      // Upload to S3/MinIO
-      await this.s3Client.send(
-        new PutObjectCommand({
-          Bucket: this.bucket,
-          Key: fileName,
-          Body: buffer,
-          ContentType: contentType,
-        }),
-      );
-
-      // Return the public URL
-      const endpoint = this.configService.get<string>(
-        'S3_ENDPOINT',
-        'http://localhost:9000',
-      );
-      const uploadedUrl = `${endpoint}/${this.bucket}/${fileName}`;
-
-      this.logger.debug(`Uploaded image to: ${uploadedUrl}`);
-      return uploadedUrl;
+      const { buffer, contentType } = await this.downloadFile(sourceUrl);
+      const key = `${folder}/${uuidv4()}.${EXTENSION_MAP[contentType] || 'jpg'}`;
+      await this.putObject(key, buffer, contentType);
+      const url = this.buildPublicUrl(key);
+      this.logger.debug(`Uploaded image to: ${url}`);
+      return url;
     } catch (error) {
       this.logger.error(`Failed to download and upload image: ${error}`);
       throw error;
     }
   }
 
-  /**
-   * Uploads a buffer directly to storage.
-   * Useful when you already have the file content in memory.
-   *
-   * @param buffer - File content as Buffer
-   * @param contentType - MIME type of the file
-   * @param folder - Folder/prefix in storage
-   * @returns URL of the uploaded file
-   */
-  async uploadBuffer(
-    buffer: Buffer,
-    contentType: string,
-    folder: string = 'uploads',
-  ): Promise<string> {
-    const extension = EXTENSION_MAP[contentType] || 'bin';
-    const fileName = `${folder}/${uuidv4()}.${extension}`;
+  async uploadBuffer(buffer: Buffer, contentType: string, folder = 'uploads'): Promise<string> {
+    const key = `${folder}/${uuidv4()}.${EXTENSION_MAP[contentType] || 'bin'}`;
+    await this.putObject(key, buffer, contentType);
+    return this.buildPublicUrl(key);
+  }
 
-    await this.s3Client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: fileName,
-        Body: buffer,
-        ContentType: contentType,
-      }),
-    );
-
-    const endpoint = this.configService.get<string>(
-      'S3_ENDPOINT',
-      'http://localhost:9000',
-    );
-    return `${endpoint}/${this.bucket}/${fileName}`;
+  private async downloadFile(url: string): Promise<{ buffer: Buffer; contentType: string }> {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to download: ${response.status} ${response.statusText}`);
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    return { buffer: Buffer.from(await response.arrayBuffer()), contentType };
   }
 }
 

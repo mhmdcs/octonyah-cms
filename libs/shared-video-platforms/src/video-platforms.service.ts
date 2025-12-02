@@ -30,71 +30,29 @@ export class VideoPlatformsService {
     }
   }
 
-  /**
-   * Detect platform and extract video ID from URL
-   * @param url - Video URL from any supported platform
-   * @returns Platform type and video ID
-   * @throws BadRequestException if URL is not from a supported platform
-   */
   detectPlatform(url: string): PlatformDetectionResult {
     for (const provider of this.providers) {
       const videoId = provider.extractVideoId(url);
-      if (videoId) {
-        return {
-          platform: provider.platform,
-          videoId,
-        };
-      }
+      if (videoId) return { platform: provider.platform, videoId };
     }
-
-    throw new BadRequestException(
-      `Unsupported video URL. Supported platforms: ${Array.from(this.providerMap.keys()).join(', ')}`,
-    );
+    throw new BadRequestException(`Unsupported video URL. Supported platforms: ${this.getSupportedPlatforms().join(', ')}`);
   }
 
-  /**
-   * Get provider for a specific platform
-   * @param platform - Platform type
-   * @returns Platform provider
-   * @throws BadRequestException if platform is not supported
-   */
   getProvider(platform: VideoPlatform): PlatformProvider {
     const provider = this.providerMap.get(platform);
-    if (!provider) {
-      throw new BadRequestException(`Platform not supported: ${platform}`);
-    }
+    if (!provider) throw new BadRequestException(`Platform not supported: ${platform}`);
     return provider;
   }
 
-  /**
-   * Fetch video metadata from URL
-   * Auto-detects platform and fetches metadata
-   * @param url - Video URL from any supported platform
-   * @returns Video metadata
-   */
   async fetchMetadataFromUrl(url: string): Promise<VideoMetadata> {
     const { platform, videoId } = this.detectPlatform(url);
-    const provider = this.getProvider(platform);
-    return provider.fetchMetadata(videoId);
+    return this.getProvider(platform).fetchMetadata(videoId);
   }
 
-  /**
-   * Fetch video metadata by platform and video ID
-   * @param platform - Platform type
-   * @param videoId - Platform-specific video ID
-   * @returns Video metadata
-   */
-  async fetchMetadata(
-    platform: VideoPlatform,
-    videoId: string,
-  ): Promise<VideoMetadata> {
-    const provider = this.getProvider(platform);
-    return provider.fetchMetadata(videoId);
+  async fetchMetadata(platform: VideoPlatform, videoId: string): Promise<VideoMetadata> {
+    return this.getProvider(platform).fetchMetadata(videoId);
   }
 
-  /**
-   * Get list of supported platforms
-   */
   getSupportedPlatforms(): VideoPlatform[] {
     return Array.from(this.providerMap.keys());
   }

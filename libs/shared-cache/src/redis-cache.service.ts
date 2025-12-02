@@ -9,26 +9,18 @@ export class RedisCacheService implements OnModuleDestroy {
   private readonly defaultTtlSeconds: number;
 
   constructor(private readonly configService: ConfigService) {
+    this.client = this.createRedisClient();
+    this.defaultTtlSeconds = parseInt(this.configService.get('REDIS_TTL_SECONDS', '300'), 10);
+  }
+
+  private createRedisClient(): RedisClient {
     const redisUrl = this.configService.get<string>('REDIS_URL');
-    const host = this.configService.get<string>('REDIS_HOST', 'localhost');
-    const port = parseInt(
-      this.configService.get<string>('REDIS_PORT', '6379'),
-      10,
-    );
-    const password = this.configService.get<string>('REDIS_PASSWORD');
-
-    this.client = redisUrl
-      ? new Redis(redisUrl)
-      : new Redis({
-          host,
-          port,
-          password: password,
-        });
-
-    this.defaultTtlSeconds = parseInt(
-      this.configService.get<string>('REDIS_TTL_SECONDS') || '300',
-      10,
-    );
+    if (redisUrl) return new Redis(redisUrl);
+    return new Redis({
+      host: this.configService.get('REDIS_HOST', 'localhost'),
+      port: parseInt(this.configService.get('REDIS_PORT', '6379'), 10),
+      password: this.configService.get<string>('REDIS_PASSWORD'),
+    });
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -62,23 +54,15 @@ export class RedisCacheService implements OnModuleDestroy {
     await this.deleteByPattern(`${prefix}:*`);
   }
 
-  private async deleteByPattern(pattern: string): Promise<void> {
-    const stream = this.client.scanStream({
-      match: pattern,
-      count: 100,
-    });
-
-    return new Promise<void>((resolve, reject) => {
+  private deleteByPattern(pattern: string): Promise<void> {
+    const stream = this.client.scanStream({ match: pattern, count: 100 });
+    return new Promise((resolve, reject) => {
       stream.on('data', (keys: string[]) => {
-        if (keys.length) {
-          this.client.del(...keys).catch((error) =>
-            this.logger.error(`Failed to delete keys for pattern ${pattern}`, error),
-          );
-        }
+        if (!keys.length) return;
+        this.client.del(...keys).catch((e) => this.logger.error(`Failed to delete keys: ${pattern}`, e));
       });
-
-      stream.on('end', () => resolve());
-      stream.on('error', (error) => reject(error));
+      stream.on('end', resolve);
+      stream.on('error', reject);
     });
   }
 }

@@ -16,29 +16,24 @@ export class DiscoveryService {
     private readonly videoSearch: VideoSearchService,
   ) {}
 
-  // Text search in title and description, Filtering by category, type, and language, 
-  // Pagination with configurable page size
-  // Results ordered by publication date (newest first)
-  async searchVideos(searchDto: SearchVideosDto): Promise<SearchResponseDto> {
-    const cacheKey = this.buildSearchCacheKey(searchDto);
-    const cached = await this.cache.get<SearchResponseDto>(cacheKey);
-    if (cached) return cached;
-
-    const response = await this.videoSearch.search(searchDto);
-    await this.cache.set(cacheKey, response);
-    return response;
+  async searchVideos(dto: SearchVideosDto): Promise<SearchResponseDto> {
+    return this.withCache(this.buildSearchCacheKey(dto), () => this.videoSearch.search(dto));
   }
 
   async getVideo(id: string): Promise<Video> {
-    const cacheKey = buildVideoCacheKey(id);
-    const cached = await this.cache.get<Video>(cacheKey);
+    return this.withCache(buildVideoCacheKey(id), async () => {
+      const video = await this.videoRepository.findOne({ where: { id } });
+      if (!video) throw new Error(`Video with ID ${id} not found`);
+      return video;
+    });
+  }
+
+  private async withCache<T>(key: string, fetchFn: () => Promise<T>): Promise<T> {
+    const cached = await this.cache.get<T>(key);
     if (cached) return cached;
-
-    const video = await this.videoRepository.findOne({ where: { id } });
-    if (!video) throw new Error(`Video with ID ${id} not found`);
-
-    await this.cache.set(cacheKey, video);
-    return video;
+    const result = await fetchFn();
+    await this.cache.set(key, result);
+    return result;
   }
 
   async getVideosByCategory(category: string, page = 1, limit = 20): Promise<SearchResponseDto> {
