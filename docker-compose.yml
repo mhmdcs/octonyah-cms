@@ -62,7 +62,7 @@ services:
       DB_PASSWORD: postgres
       DB_DATABASE: octonyah
       RABBITMQ_URL: amqp://rabbitmq:5672
-      RABBITMQ_QUEUE: program-events
+      RABBITMQ_QUEUE: video-events
       RABBITMQ_PREFETCH: 1
       # YouTube API key for importing videos (get from Google Cloud Console)
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
@@ -90,14 +90,14 @@ services:
       DB_PASSWORD: postgres
       DB_DATABASE: octonyah
       RABBITMQ_URL: amqp://rabbitmq:5672
-      RABBITMQ_QUEUE: program-events
+      RABBITMQ_QUEUE: video-events
       RABBITMQ_PREFETCH: 1
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD:
       REDIS_TTL_SECONDS: 300
       ELASTICSEARCH_NODE: http://elasticsearch:9200
-      ELASTICSEARCH_INDEX: programs
+      ELASTICSEARCH_INDEX: videos
     ports:
       - '3001:3001'
 

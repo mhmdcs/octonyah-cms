@@ -24,7 +24,7 @@ export class RmqModule {
               transport: Transport.RMQ,
               options: {
                 urls: [config.get<string>('RABBITMQ_URL', 'amqp://localhost:5672')],
-                queue: options.queue || config.get<string>('RABBITMQ_QUEUE', 'program-events'),
+                queue: options.queue || config.get<string>('RABBITMQ_QUEUE', 'video-events'),
                 queueOptions: {
                   durable: true,
                 },
@@ -57,7 +57,7 @@ export class RmqModule {
       transport: Transport.RMQ,
       options: {
         urls: [process.env.RABBITMQ_URL || 'amqp://localhost:5672'],
-        queue: options?.queue || process.env.RABBITMQ_QUEUE || 'program-events',
+        queue: options?.queue || process.env.RABBITMQ_QUEUE || 'video-events',
         queueOptions: {
           durable: true,
         },

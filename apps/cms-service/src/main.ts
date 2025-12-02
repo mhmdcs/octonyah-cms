@@ -9,10 +9,10 @@ async function bootstrap() {
 
   setupSwagger(app, {
     title: 'Octonyah CMS Service',
-    description: 'Internal service for managing programs',
+    description: 'Internal service for managing videos',
     version: '1.0',
     tags: [
-      { name: 'CMS Programs', description: 'Program management endpoints (internal)' },
+      { name: 'CMS Video', description: 'Video management endpoints (internal)' },
     ],
     enableBearerAuth: true,
     path: 'api',
