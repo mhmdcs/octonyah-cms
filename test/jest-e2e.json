@@ -12,6 +12,7 @@
     "^@octonyah/shared-events(.*)$": "<rootDir>/libs/shared-events/src$1",
     "^@octonyah/shared-cache(.*)$": "<rootDir>/libs/shared-cache/src$1",
     "^@octonyah/shared-video-platforms(.*)$": "<rootDir>/libs/shared-video-platforms/src$1",
+    "^@octonyah/shared-throttler(.*)$": "<rootDir>/libs/shared-throttler/src$1",
     "^@cms/(.*)$": "<rootDir>/apps/cms-service/src/$1",
     "^@discovery/(.*)$": "<rootDir>/apps/discovery-service/src/$1"
   }

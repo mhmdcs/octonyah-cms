@@ -72,6 +72,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/shared-video-platforms/tsconfig.lib.json"
       }
+    },
+    "shared-throttler": {
+      "type": "library",
+      "root": "libs/shared-throttler",
+      "sourceRoot": "libs/shared-throttler/src",
+      "entryFile": "src/index",
+      "compilerOptions": {
+        "tsConfigPath": "libs/shared-throttler/tsconfig.lib.json"
+      }
     }
   }
 }

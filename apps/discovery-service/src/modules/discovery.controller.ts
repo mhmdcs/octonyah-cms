@@ -17,6 +17,10 @@ import { DiscoveryService } from './discovery.service';
 import { SearchVideosDto } from './dto/search-videos.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
 import { Video } from '@octonyah/shared-videos';
+import {
+  ThrottleDiscoverySearch,
+  ThrottleDiscoveryRead,
+} from '@octonyah/shared-throttler';
 
 @ApiTags('Discovery')
 @Controller('discovery')
@@ -24,6 +28,7 @@ export class DiscoveryController {
   constructor(private readonly discoveryService: DiscoveryService) {}
 
   @Get('search')
+  @ThrottleDiscoverySearch() // 100 requests per minute - search is resource intensive
   @ApiOperation({
     summary: 'Search videos',
     description:
@@ -34,6 +39,10 @@ export class DiscoveryController {
     description: 'Search results with videos and pagination metadata',
     type: SearchResponseDto,
   })
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests. Rate limit: 100/min',
+  })
   async search(
     @Query() searchDto: SearchVideosDto,
   ): Promise<SearchResponseDto> {
@@ -41,10 +50,12 @@ export class DiscoveryController {
   }
 
   @Get('videos/:id')
+  @ThrottleDiscoveryRead() // 200 requests per minute - simple lookups
   @ApiOperation({ summary: 'Get a video by ID', description: 'Retrieve a specific video by its UUID for public viewing' })
   @ApiParam({ name: 'id', description: 'Video UUID' })
   @ApiResponse({ status: 200, description: 'Video found', type: Video })
   @ApiResponse({ status: 404, description: 'Video not found' })
+  @ApiResponse({ status: 429, description: 'Too many requests. Rate limit: 200/min' })
   async getVideo(@Param('id') id: string): Promise<Video> {
     try {
       return await this.discoveryService.getVideo(id);
@@ -55,6 +66,7 @@ export class DiscoveryController {
   }
 
   @Get('categories/:category')
+  @ThrottleDiscoverySearch() // 100 requests per minute - filtered queries
   @ApiOperation({
     summary: 'Get videos by category',
     description: 'Retrieve all videos in a specific category with pagination',
@@ -71,6 +83,10 @@ export class DiscoveryController {
     description: 'Videos in the specified category',
     type: SearchResponseDto,
   })
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests. Rate limit: 100/min',
+  })
   async getByCategory(
     @Param('category') category: string,
     @Query('page') page?: number,
@@ -80,6 +96,7 @@ export class DiscoveryController {
   }
 
   @Get('types/:type')
+  @ThrottleDiscoverySearch() // 100 requests per minute - filtered queries
   @ApiOperation({
     summary: 'Get videos by type',
     description:
@@ -97,6 +114,10 @@ export class DiscoveryController {
     status: 200,
     description: 'Videos of the specified type',
     type: SearchResponseDto,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Too many requests. Rate limit: 100/min',
   })
   async getByType(
     @Param('type') type: string,

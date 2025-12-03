@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@elastic/elasticsearch": "^9.2.0",
+    "@nest-lab/throttler-storage-redis": "^1.1.0",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -38,6 +39,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.2.3",
     "@nestjs/terminus": "^11.0.0",
+    "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.9",
@@ -106,6 +108,7 @@
       "^@octonyah/shared-events(.*)$": "<rootDir>/libs/shared-events/src$1",
       "^@octonyah/shared-cache(.*)$": "<rootDir>/libs/shared-cache/src$1",
       "^@octonyah/shared-video-platforms(.*)$": "<rootDir>/libs/shared-video-platforms/src$1",
+      "^@octonyah/shared-throttler(.*)$": "<rootDir>/libs/shared-throttler/src$1",
       "^@cms/(.*)$": "<rootDir>/apps/cms-service/src/$1",
       "^@discovery/(.*)$": "<rootDir>/apps/discovery-service/src/$1"
     }

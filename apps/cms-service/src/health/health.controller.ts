@@ -4,8 +4,10 @@ import {
   HealthCheck,
   TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
+import { SkipThrottle } from '@octonyah/shared-throttler';
 
 @Controller('health')
+@SkipThrottle() // Health checks should not be rate limited
 export class HealthController {
   constructor(
     private health: HealthCheckService,

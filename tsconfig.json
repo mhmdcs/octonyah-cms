@@ -21,6 +21,8 @@
       "@octonyah/shared-cache/*": ["libs/shared-cache/src/*"],
       "@octonyah/shared-video-platforms": ["libs/shared-video-platforms/src"],
       "@octonyah/shared-video-platforms/*": ["libs/shared-video-platforms/src/*"],
+      "@octonyah/shared-throttler": ["libs/shared-throttler/src"],
+      "@octonyah/shared-throttler/*": ["libs/shared-throttler/src/*"],
       "@cms/*": ["apps/cms-service/src/*"],
       "@discovery/*": ["apps/discovery-service/src/*"]
     },

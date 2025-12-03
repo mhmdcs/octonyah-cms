@@ -6,8 +6,10 @@ import {
 } from '@nestjs/terminus';
 import { RedisHealthIndicator } from './redis-health.indicator';
 import { ElasticsearchHealthIndicator } from './elasticsearch-health.indicator';
+import { SkipThrottle } from '@octonyah/shared-throttler';
 
 @Controller('health')
+@SkipThrottle() // Health checks should not be rate limited
 export class HealthController {
   constructor(
     private health: HealthCheckService,
