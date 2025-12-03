@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
+  Index,
 } from 'typeorm';
 
 export enum VideoType {
@@ -49,6 +50,7 @@ export class Video {
   @Column({ type: 'integer' })
   duration: number; // in seconds
 
+  @Index('IDX_VIDEO_PUBLICATION_DATE')
   @Column({ type: 'date' })
   publicationDate: Date;
 
