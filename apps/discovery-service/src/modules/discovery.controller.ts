@@ -2,6 +2,7 @@ import { Controller, Get, Query, Param } from '@nestjs/common';
 import { DiscoveryService } from './discovery.service';
 import { SearchVideosDto } from './dto/search-videos.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
+import { PaginationDto } from './dto/pagination.dto';
 import { Video } from '@octonyah/shared-videos';
 import { ThrottleDiscoverySearch, ThrottleDiscoveryRead } from '@octonyah/shared-throttler';
 
@@ -25,19 +26,17 @@ export class DiscoveryController {
   @ThrottleDiscoverySearch()
   getByCategory(
     @Param('category') category: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query() pagination: PaginationDto,
   ): Promise<SearchResponseDto> {
-    return this.discoveryService.getVideosByCategory(category, page, limit);
+    return this.discoveryService.getVideosByCategory(category, pagination.page, pagination.limit);
   }
 
   @Get('types/:type')
   @ThrottleDiscoverySearch()
   getByType(
     @Param('type') type: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query() pagination: PaginationDto,
   ): Promise<SearchResponseDto> {
-    return this.discoveryService.getVideosByType(type, page, limit);
+    return this.discoveryService.getVideosByType(type, pagination.page, pagination.limit);
   }
 }
