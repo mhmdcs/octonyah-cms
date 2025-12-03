@@ -1,55 +1,43 @@
-import { ApiProperty } from '@nestjs/swagger';
 import { Video } from '@octonyah/shared-videos';
 
-// includes the videos array, pagination metadata, total count
-// to help frontends implement pagination
+/**
+ * Response DTO for search results.
+ * Includes the videos array, pagination metadata, and total count
+ * to help frontends implement pagination.
+ */
 export class SearchResponseDto {
-  @ApiProperty({
-    description: 'Array of videos matching the search criteria',
-    type: [Video],
-  })
+  /**
+   * Array of videos matching the search criteria.
+   */
   data: Video[];
 
-  // all pages of videos
-  @ApiProperty({
-    description: 'Total number of videos matching the search criteria',
-    example: 150,
-  })
+  /**
+   * Total number of videos matching the search criteria (across all pages).
+   */
   total: number;
 
-  // Current page number (1-based)
-  @ApiProperty({
-    description: 'Current page number',
-    example: 1,
-  })
+  /**
+   * Current page number (1-based).
+   */
   page: number;
 
-  // Number of results per page
-  @ApiProperty({
-    description: 'Number of results per page',
-    example: 20,
-  })
+  /**
+   * Number of results per page.
+   */
   limit: number;
 
-  // Total number of pages available
-  @ApiProperty({
-    description: 'Total number of pages',
-    example: 8,
-  })
+  /**
+   * Total number of pages available.
+   */
   totalPages: number;
 
-  // Whether there is a next page
-  @ApiProperty({
-    description: 'Whether there is a next page',
-    example: true,
-  })
+  /**
+   * Whether there is a next page.
+   */
   hasNext: boolean;
 
-  // Whether there is a previous page
-  @ApiProperty({
-    description: 'Whether there is a previous page',
-    example: false,
-  })
+  /**
+   * Whether there is a previous page.
+   */
   hasPrev: boolean;
 }
-

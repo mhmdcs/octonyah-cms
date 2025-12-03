@@ -1,24 +1,40 @@
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule, OpenAPIObject } from '@nestjs/swagger';
 import { INestApplication } from '@nestjs/common';
+import * as fs from 'fs';
+import * as yaml from 'js-yaml';
 
 export interface SwaggerConfigOptions {
-  title: string;
-  description: string;
-  version?: string;
-  tags?: Array<{ name: string; description?: string }>;
-  enableBearerAuth?: boolean;
+  /**
+   * Path to the OpenAPI YAML specification file
+   */
+  specPath: string;
+  /**
+   * URL path where Swagger UI will be served (default: 'api')
+   */
   path?: string;
 }
 
-export function setupSwagger(app: INestApplication, options: SwaggerConfigOptions): void {
-  const config = new DocumentBuilder()
-    .setTitle(options.title)
-    .setDescription(options.description)
-    .setVersion(options.version || '1.0');
+/**
+ * Sets up Swagger UI using an external OpenAPI YAML specification file.
+ * This keeps API documentation separate from application code for cleaner controllers.
+ *
+ * @param app - The NestJS application instance
+ * @param options - Configuration options including the path to the YAML spec
+ *
+ * @example
+ * ```typescript
+ * setupSwagger(app, {
+ *   specPath: path.join(__dirname, 'openapi.yaml'),
+ *   path: 'api',
+ * });
+ * ```
+ */
+export function setupSwagger(
+  app: INestApplication,
+  options: SwaggerConfigOptions,
+): void {
+  const specFile = fs.readFileSync(options.specPath, 'utf8');
+  const document = yaml.load(specFile) as OpenAPIObject;
 
-  options.tags?.forEach((tag) => config.addTag(tag.name, tag.description));
-  if (options.enableBearerAuth) config.addBearerAuth();
-
-  SwaggerModule.setup(options.path || 'api', app, SwaggerModule.createDocument(app, config.build()));
+  SwaggerModule.setup(options.path || 'api', app, document);
 }
-

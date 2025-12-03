@@ -1,0 +1,959 @@
+openapi: 3.0.3
+info:
+  title: Octonyah CMS Service API
+  description: |
+    Internal service for managing videos in the Octonyah platform.
+    
+    ## Authentication
+    All video management endpoints require JWT bearer token authentication.
+    Obtain a token via the `/auth/login` endpoint.
+    
+    ## Rate Limiting
+    This API implements rate limiting to ensure fair usage:
+    - **Auth**: 5 requests/minute (prevents brute force)
+    - **Read operations**: 60 requests/minute
+    - **Write operations**: 30 requests/minute
+    - **Delete operations**: 10 requests/minute
+    - **Heavy operations** (reindex): 2 requests/minute
+    
+    ## Error Handling
+    All errors follow a consistent JSON structure with `statusCode`, `message`, and optional `error` fields.
+  version: 1.0.0
+  contact:
+    name: Octonyah API Support
+    email: api-support@octonyah.com
+  license:
+    name: Proprietary
+    url: https://octonyah.com/terms
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://cms-api.octonyah.com
+    description: Production server
+
+tags:
+  - name: Auth
+    description: Authentication endpoints for obtaining JWT tokens
+  - name: CMS Videos
+    description: Video management endpoints for content managers (requires authentication)
+  - name: Health
+    description: Service health check endpoints
+  - name: Root
+    description: Root endpoint for service identification
+
+paths:
+  /:
+    get:
+      tags:
+        - Root
+      summary: Service welcome message
+      description: Returns a welcome message confirming the CMS API is running.
+      operationId: getRoot
+      responses:
+        '200':
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelcomeResponse'
+              example:
+                message: "Hello World! Welcome to Octonyah CMS API"
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: |
+        Returns the health status of the service and its dependencies.
+        This endpoint is not rate limited and can be used by load balancers and monitoring systems.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              example:
+                status: "ok"
+                info:
+                  database:
+                    status: "up"
+                error: {}
+                details:
+                  database:
+                    status: "up"
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              example:
+                status: "error"
+                info: {}
+                error:
+                  database:
+                    status: "down"
+                    message: "Connection refused"
+                details:
+                  database:
+                    status: "down"
+                    message: "Connection refused"
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login and retrieve JWT access token
+      description: |
+        Authenticate with username and password to receive a JWT access token.
+        
+        **Rate Limit**: 5 requests per minute to prevent brute force attacks.
+        
+        The returned token should be included in subsequent requests as a Bearer token
+        in the Authorization header.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              admin:
+                summary: Admin user login
+                value:
+                  username: "admin"
+                  password: "admin123"
+              editor:
+                summary: Editor user login
+                value:
+                  username: "editor"
+                  password: "editor123"
+      responses:
+        '200':
+          description: Successfully authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzAxNjIzNDU2LCJleHAiOjE3MDE3MDk4NTZ9.abcdefg123456789"
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 401
+                message: "Invalid credentials"
+                error: "Unauthorized"
+        '429':
+          description: Too many login attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 429
+                message: "Too many login attempts. Please wait before retrying."
+                error: "Too Many Requests"
+
+  /cms/videos:
+    get:
+      tags:
+        - CMS Videos
+      summary: Get all videos
+      description: |
+        Retrieve a list of all videos in the system.
+        
+        **Authorization**: Requires `admin` or `editor` role.
+        
+        **Rate Limit**: 60 requests per minute.
+      operationId: findAllVideos
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of all videos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Video'
+              example:
+                - id: "550e8400-e29b-41d4-a716-446655440000"
+                  title: "Introduction to NestJS"
+                  description: "A comprehensive guide to building scalable Node.js applications with NestJS"
+                  category: "Technology"
+                  type: "video_podcast"
+                  tags: ["nestjs", "typescript", "backend", "nodejs"]
+                  duration: 3600
+                  publicationDate: "2024-01-15"
+                  videoUrl: "https://www.youtube.com/watch?v=abc123"
+                  thumbnailUrl: "https://img.youtube.com/vi/abc123/maxresdefault.jpg"
+                  platform: "youtube"
+                  platformVideoId: "abc123"
+                  embedUrl: "https://www.youtube.com/embed/abc123"
+                  createdAt: "2024-01-15T10:30:00.000Z"
+                  updatedAt: "2024-01-15T10:30:00.000Z"
+                - id: "660e8400-e29b-41d4-a716-446655440001"
+                  title: "The History of Computing"
+                  description: "A documentary exploring the evolution of computers"
+                  category: "History"
+                  type: "documentary"
+                  tags: ["history", "technology", "computers"]
+                  duration: 5400
+                  publicationDate: "2024-02-01"
+                  videoUrl: "https://www.youtube.com/watch?v=xyz789"
+                  thumbnailUrl: "https://img.youtube.com/vi/xyz789/maxresdefault.jpg"
+                  platform: "youtube"
+                  platformVideoId: "xyz789"
+                  embedUrl: "https://www.youtube.com/embed/xyz789"
+                  createdAt: "2024-02-01T14:00:00.000Z"
+                  updatedAt: "2024-02-01T14:00:00.000Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 429
+                message: "Too many requests. Rate limit: 60/min"
+                error: "Too Many Requests"
+
+  /cms/videos/import:
+    post:
+      tags:
+        - CMS Videos
+      summary: Import a video from external platform
+      description: |
+        Import a video from YouTube or other supported platforms.
+        
+        The service automatically extracts metadata from the platform including:
+        - Title
+        - Description
+        - Duration
+        - Thumbnail URL
+        - Tags
+        
+        You can optionally override any of the extracted metadata by providing
+        values in the request body.
+        
+        **Authorization**: Requires `admin` or `editor` role.
+        
+        **Rate Limit**: 30 requests per minute.
+      operationId: importVideo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportVideoRequest'
+            examples:
+              youtube_minimal:
+                summary: Minimal YouTube import
+                description: Import with only required fields, metadata auto-extracted
+                value:
+                  url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                  category: "Music"
+                  type: "video_podcast"
+              youtube_with_overrides:
+                summary: YouTube import with overrides
+                description: Import with custom title and description
+                value:
+                  url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                  category: "Technology"
+                  type: "video_podcast"
+                  title: "Custom Video Title"
+                  description: "My custom description for this video"
+                  tags: ["custom", "tags", "override"]
+              youtube_short:
+                summary: YouTube Short URL
+                value:
+                  url: "https://youtu.be/dQw4w9WgXcQ"
+                  category: "Entertainment"
+                  type: "documentary"
+      responses:
+        '201':
+          description: Video successfully imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440000"
+                title: "Never Gonna Give You Up"
+                description: "Rick Astley's classic 1987 hit"
+                category: "Music"
+                type: "video_podcast"
+                tags: ["music", "80s", "rick astley"]
+                duration: 212
+                publicationDate: "1987-07-27"
+                videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
+                platform: "youtube"
+                platformVideoId: "dQw4w9WgXcQ"
+                embedUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ"
+                createdAt: "2024-01-15T10:30:00.000Z"
+                updatedAt: "2024-01-15T10:30:00.000Z"
+        '400':
+          description: Invalid URL or unsupported platform
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_url:
+                  summary: Invalid URL format
+                  value:
+                    statusCode: 400
+                    message: "Invalid video URL format"
+                    error: "Bad Request"
+                unsupported_platform:
+                  summary: Unsupported platform
+                  value:
+                    statusCode: 400
+                    message: "Unsupported video platform. Currently supported: YouTube"
+                    error: "Bad Request"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Video already imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 409
+                message: "Video with platform ID 'dQw4w9WgXcQ' has already been imported"
+                error: "Conflict"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 429
+                message: "Too many requests. Rate limit: 30/min"
+                error: "Too Many Requests"
+
+  /cms/videos/reindex:
+    post:
+      tags:
+        - CMS Videos
+      summary: Trigger full search index rebuild
+      description: |
+        Enqueues a background job that reads all canonical data from PostgreSQL
+        and rebuilds the Elasticsearch search index.
+        
+        This is an expensive operation and should only be used when:
+        - The search index has become out of sync
+        - After major data migrations
+        - To fix search-related issues
+        
+        The operation runs asynchronously - this endpoint returns immediately
+        with a `202 Accepted` status while the reindex job processes in the background.
+        
+        **Authorization**: Requires `admin` role only.
+        
+        **Rate Limit**: 2 requests per minute (heavy operation).
+      operationId: triggerReindex
+      security:
+        - bearerAuth: []
+      responses:
+        '202':
+          description: Reindex job enqueued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReindexResponse'
+              example:
+                status: "scheduled"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 429
+                message: "Too many requests. Rate limit: 2/min"
+                error: "Too Many Requests"
+
+  /cms/videos/{id}:
+    get:
+      tags:
+        - CMS Videos
+      summary: Get a video by ID
+      description: |
+        Retrieve a specific video by its UUID.
+        
+        **Authorization**: Requires `admin` or `editor` role.
+        
+        **Rate Limit**: 60 requests per minute.
+      operationId: findOneVideo
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/VideoId'
+      responses:
+        '200':
+          description: Video found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440000"
+                title: "Introduction to NestJS"
+                description: "A comprehensive guide to building scalable Node.js applications with NestJS"
+                category: "Technology"
+                type: "video_podcast"
+                tags: ["nestjs", "typescript", "backend"]
+                duration: 3600
+                publicationDate: "2024-01-15"
+                videoUrl: "https://www.youtube.com/watch?v=abc123"
+                thumbnailUrl: "https://img.youtube.com/vi/abc123/maxresdefault.jpg"
+                platform: "youtube"
+                platformVideoId: "abc123"
+                embedUrl: "https://www.youtube.com/embed/abc123"
+                createdAt: "2024-01-15T10:30:00.000Z"
+                updatedAt: "2024-01-15T10:30:00.000Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 429
+                message: "Too many requests. Rate limit: 60/min"
+                error: "Too Many Requests"
+
+    patch:
+      tags:
+        - CMS Videos
+      summary: Update a video
+      description: |
+        Update an existing video's metadata. All fields are optional -
+        only provided fields will be updated.
+        
+        After updating, the video is automatically re-indexed in Elasticsearch.
+        
+        **Authorization**: Requires `admin` or `editor` role.
+        
+        **Rate Limit**: 30 requests per minute.
+      operationId: updateVideo
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/VideoId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVideoRequest'
+            examples:
+              update_title:
+                summary: Update title only
+                value:
+                  title: "Updated Video Title"
+              update_category_and_type:
+                summary: Update category and type
+                value:
+                  category: "Science"
+                  type: "documentary"
+              update_tags:
+                summary: Update tags
+                value:
+                  tags: ["new-tag", "updated", "technology"]
+              full_update:
+                summary: Full metadata update
+                value:
+                  title: "Completely New Title"
+                  description: "Updated description for this video"
+                  category: "Technology"
+                  type: "video_podcast"
+                  tags: ["updated", "tech", "guide"]
+                  publicationDate: "2024-06-01"
+      responses:
+        '200':
+          description: Video successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440000"
+                title: "Updated Video Title"
+                description: "A comprehensive guide to building scalable Node.js applications with NestJS"
+                category: "Technology"
+                type: "video_podcast"
+                tags: ["nestjs", "typescript", "backend"]
+                duration: 3600
+                publicationDate: "2024-01-15"
+                videoUrl: "https://www.youtube.com/watch?v=abc123"
+                thumbnailUrl: "https://img.youtube.com/vi/abc123/maxresdefault.jpg"
+                platform: "youtube"
+                platformVideoId: "abc123"
+                embedUrl: "https://www.youtube.com/embed/abc123"
+                createdAt: "2024-01-15T10:30:00.000Z"
+                updatedAt: "2024-01-15T12:45:00.000Z"
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+              example:
+                statusCode: 400
+                message:
+                  - "type must be one of the following values: video_podcast, documentary"
+                  - "publicationDate must be a valid ISO 8601 date string"
+                error: "Bad Request"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 429
+                message: "Too many requests. Rate limit: 30/min"
+                error: "Too Many Requests"
+
+    delete:
+      tags:
+        - CMS Videos
+      summary: Delete a video
+      description: |
+        Soft delete a video by its UUID. The video will be marked as deleted
+        but remains in the database for potential recovery.
+        
+        After deletion, the video is removed from the Elasticsearch search index.
+        
+        **Authorization**: Requires `admin` role only.
+        
+        **Rate Limit**: 10 requests per minute.
+      operationId: deleteVideo
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/VideoId'
+      responses:
+        '204':
+          description: Video successfully deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 429
+                message: "Too many requests. Rate limit: 10/min"
+                error: "Too Many Requests"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from the /auth/login endpoint
+
+  parameters:
+    VideoId:
+      name: id
+      in: path
+      required: true
+      description: Video UUID
+      schema:
+        type: string
+        format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 401
+            message: "Unauthorized"
+
+    Forbidden:
+      description: Insufficient permissions for this operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 403
+            message: "Forbidden resource"
+            error: "Forbidden"
+
+    NotFound:
+      description: Video not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 404
+            message: "Video not found"
+            error: "Not Found"
+
+  schemas:
+    WelcomeResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Welcome message
+
+    HealthCheckResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+          description: Overall health status
+        info:
+          type: object
+          description: Details of healthy dependencies
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [up]
+        error:
+          type: object
+          description: Details of unhealthy dependencies
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [down]
+              message:
+                type: string
+        details:
+          type: object
+          description: Combined status of all dependencies
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [up, down]
+              message:
+                type: string
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: User's username
+          minLength: 1
+          example: "admin"
+        password:
+          type: string
+          description: User's password
+          format: password
+          minLength: 1
+          example: "admin123"
+
+    LoginResponse:
+      type: object
+      required:
+        - access_token
+      properties:
+        access_token:
+          type: string
+          description: JWT access token for authentication
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzAxNjIzNDU2LCJleHAiOjE3MDE3MDk4NTZ9.abcdefg123456789"
+
+    VideoType:
+      type: string
+      enum:
+        - video_podcast
+        - documentary
+      description: |
+        Type of video content:
+        - `video_podcast`: Video podcast episode
+        - `documentary`: Documentary film
+
+    VideoPlatform:
+      type: string
+      enum:
+        - native
+        - youtube
+      description: |
+        Source platform of the video:
+        - `native`: Uploaded directly to our platform
+        - `youtube`: Imported from YouTube
+
+    Video:
+      type: object
+      required:
+        - id
+        - title
+        - category
+        - type
+        - duration
+        - publicationDate
+        - platform
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the video
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        title:
+          type: string
+          maxLength: 255
+          description: Video title
+          example: "Introduction to NestJS"
+        description:
+          type: string
+          nullable: true
+          description: Video description
+          example: "A comprehensive guide to building scalable Node.js applications with NestJS"
+        category:
+          type: string
+          maxLength: 100
+          description: Video category (e.g., Technology, Science, History)
+          example: "Technology"
+        type:
+          $ref: '#/components/schemas/VideoType'
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: Tags/keywords for search and filtering
+          example: ["nestjs", "typescript", "backend"]
+        duration:
+          type: integer
+          description: Video duration in seconds
+          minimum: 0
+          example: 3600
+        publicationDate:
+          type: string
+          format: date
+          description: Publication date
+          example: "2024-01-15"
+        videoUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+          description: URL to watch the video
+          example: "https://www.youtube.com/watch?v=abc123"
+        thumbnailUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+          description: URL of the video thumbnail image
+          example: "https://img.youtube.com/vi/abc123/maxresdefault.jpg"
+        platform:
+          $ref: '#/components/schemas/VideoPlatform'
+        platformVideoId:
+          type: string
+          maxLength: 100
+          nullable: true
+          description: Video ID on the source platform
+          example: "abc123"
+        embedUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+          description: Embeddable URL for the video player
+          example: "https://www.youtube.com/embed/abc123"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the video was created in our system
+          example: "2024-01-15T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the video was last updated
+          example: "2024-01-15T10:30:00.000Z"
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Soft delete timestamp (null if not deleted)
+          example: null
+
+    ImportVideoRequest:
+      type: object
+      required:
+        - url
+        - category
+        - type
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL of the video to import (e.g., YouTube URL)
+          example: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        category:
+          type: string
+          description: Category for the video
+          example: "Technology"
+        type:
+          $ref: '#/components/schemas/VideoType'
+        title:
+          type: string
+          description: Override the title extracted from the platform
+          example: "Custom Video Title"
+        description:
+          type: string
+          description: Override the description extracted from the platform
+          example: "Custom description for the video"
+        tags:
+          type: array
+          items:
+            type: string
+          description: Additional tags for search and filtering (merged with platform tags)
+          example: ["podcast", "interview", "tech"]
+
+    UpdateVideoRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Video title
+          example: "Updated Title"
+        description:
+          type: string
+          description: Video description
+          example: "Updated description for the video"
+        category:
+          type: string
+          description: Video category
+          example: "Technology"
+        type:
+          $ref: '#/components/schemas/VideoType'
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags/keywords for search filtering
+          example: ["nestjs", "typescript", "backend"]
+        publicationDate:
+          type: string
+          format: date
+          description: Publication date in ISO 8601 format
+          example: "2024-01-15"
+
+    ReindexResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [scheduled]
+          description: Status of the reindex job
+          example: "scheduled"
+
+    ErrorResponse:
+      type: object
+      required:
+        - statusCode
+        - message
+      properties:
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 400
+        message:
+          type: string
+          description: Error message
+          example: "Bad Request"
+        error:
+          type: string
+          description: Error type
+          example: "Bad Request"
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - statusCode
+        - message
+      properties:
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 400
+        message:
+          type: array
+          items:
+            type: string
+          description: List of validation error messages
+          example:
+            - "title must be a string"
+            - "type must be one of the following values: video_podcast, documentary"
+        error:
+          type: string
+          description: Error type
+          example: "Bad Request"
+

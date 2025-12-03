@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { MicroserviceOptions } from '@nestjs/microservices';
 import { createValidationPipe, setupSwagger } from '@octonyah/shared-config';
 import { RmqModule } from '@octonyah/shared-events';
+import * as path from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,18 +17,16 @@ async function bootstrap() {
   app.connectMicroservice(rmqOptions);
 
   setupSwagger(app, {
-    title: 'Octonyah Discovery Service',
-    description: 'Public service for searching and exploring programs',
-    version: '1.0',
-    tags: [
-      { name: 'Discovery', description: 'Public search and exploration endpoints' },
-    ],
+    specPath: path.join(__dirname, '../../openapi.yaml'),
     path: 'api',
   });
 
   await app.startAllMicroservices();
 
-  const port = configService.get<number>('DISCOVERY_PORT') ?? configService.get<number>('PORT') ?? 3001;
+  const port =
+    configService.get<number>('DISCOVERY_PORT') ??
+    configService.get<number>('PORT') ??
+    3001;
 
   await app.listen(port);
   console.log(`Discovery service running on: http://localhost:${port}`);
@@ -35,5 +34,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-

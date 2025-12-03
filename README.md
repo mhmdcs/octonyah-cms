@@ -36,6 +36,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - JWT auth + RBAC (admin, editor) for CMS-only endpoints
 - Admin-only Elasticsearch reindex trigger for search index rebuilds
 - Health check endpoints for monitoring and orchestration
+- **Rate limiting** - Redis-backed distributed rate limiting to prevent abuse
 
 ### Discovery System
 - Public API endpoints for searching videos and content
@@ -47,6 +48,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - Elasticsearch secondary index powering fast full-text search, filters, and sort options
 - BullMQ-powered background job workers that reindex Elasticsearch asynchronously
 - Health check endpoints monitoring database, Redis, and Elasticsearch connectivity
+- **Rate limiting** - Redis-backed distributed rate limiting for public API protection
 
 ## Architecture
 
@@ -187,6 +189,7 @@ This repository follows a monorepo layout with two microservices and shared libr
 - `libs/shared-events` – RabbitMQ event system (publishers, listeners, configuration).
 - `libs/shared-cache` – Redis caching module and service.
 - `libs/shared-video-platforms` – External video platform integration (YouTube API, metadata extraction, provider abstraction).
+- `libs/shared-throttler` – Distributed rate limiting with Redis storage and preset decorators.
 
 Each service has its own entry point (`main.ts`), module tree, Swagger document, and can be deployed/scaled independently. Shared code is imported through path aliases (e.g., `@octonyah/shared-videos`, `@octonyah/shared-config`) to keep the services decoupled while avoiding duplication.
 
@@ -303,6 +306,14 @@ libs/
 │       ├── redis-cache.service.ts
 │       ├── cache.constants.ts
 │       └── index.ts
+├── shared-throttler/                      # Rate limiting
+│   └── src/
+│       ├── throttler.module.ts
+│       ├── throttler.constants.ts
+│       ├── decorators/
+│       │   ├── throttle.decorator.ts
+│       │   └── skip-throttle.decorator.ts
+│       └── index.ts
 └── shared-video-platforms/                # External platform integration
     └── src/
         ├── providers/
@@ -382,6 +393,12 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
    - ISO 8601 duration parsing utility
    - Easy to extend with new providers (Vimeo, Dailymotion, etc.)
 
+8. **Shared Throttler (`libs/shared-throttler`)**
+   - Distributed rate limiting with Redis storage
+   - Preset decorators for different endpoint types (auth, read, write, heavy)
+   - Per-service default configurations (CMS vs Discovery)
+   - Skip decorator for exempt endpoints (health checks)
+
 ## Tech Stack
 
 ### Backend Framework
@@ -391,9 +408,10 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
 ### Messaging & Communication
 - **RabbitMQ** - Asynchronous event bus for cross-service communication
 
-### Caching & Background Jobs
+### Caching, Rate Limiting & Background Jobs
 - **Redis** - Distributed cache for potentially read-heavy discovery endpoints with TTL and invalidation
 - **BullMQ** - Redis-backed queues that power Elasticsearch reindex jobs
+- **@nestjs/throttler** - Distributed rate limiting with Redis storage for API protection
 
 ### Search & Read Models
 - **Elasticsearch** - Secondary index optimized for full-text search, filters, and high-concurrency read/query workloads

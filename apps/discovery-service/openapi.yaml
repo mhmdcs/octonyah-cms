@@ -1,0 +1,811 @@
+openapi: 3.0.3
+info:
+  title: Octonyah Discovery Service API
+  description: |
+    Public service for searching and exploring video content on the Octonyah platform.
+    
+    ## Overview
+    The Discovery Service provides read-only access to the video catalog, optimized for
+    fast search and filtering. It is powered by Elasticsearch for full-text search capabilities.
+    
+    ## Rate Limiting
+    This API implements rate limiting to ensure fair usage and service stability:
+    - **Search operations**: 100 requests/minute (resource-intensive queries)
+    - **Read operations**: 200 requests/minute (simple lookups)
+    
+    ## Pagination
+    All list endpoints support pagination with the following parameters:
+    - `page`: Page number (1-based, default: 1)
+    - `limit`: Results per page (default: 20, max: 100)
+    
+    The response includes pagination metadata to help build navigation:
+    - `total`: Total matching results
+    - `totalPages`: Total number of pages
+    - `hasNext`: Whether there's a next page
+    - `hasPrev`: Whether there's a previous page
+    
+    ## Search
+    The search endpoint supports:
+    - Full-text search across titles and descriptions
+    - Filtering by category, type, tags, and date range
+    - Multiple sort options (relevance, date, popularity)
+    
+    ## Error Handling
+    All errors follow a consistent JSON structure with `statusCode`, `message`, and optional `error` fields.
+  version: 1.0.0
+  contact:
+    name: Octonyah API Support
+    email: api-support@octonyah.com
+  license:
+    name: Proprietary
+    url: https://octonyah.com/terms
+
+servers:
+  - url: http://localhost:3001
+    description: Local development server
+  - url: https://discovery-api.octonyah.com
+    description: Production server
+
+tags:
+  - name: Discovery
+    description: Public search and exploration endpoints for video content
+  - name: Health
+    description: Service health check endpoints
+  - name: Root
+    description: Root endpoint for service identification
+
+paths:
+  /:
+    get:
+      tags:
+        - Root
+      summary: Service welcome message
+      description: Returns a welcome message confirming the Discovery API is running.
+      operationId: getRoot
+      responses:
+        '200':
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelcomeResponse'
+              example:
+                message: "Welcome to the Octonyah Discovery API!"
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: |
+        Returns the health status of the service and its dependencies including:
+        - PostgreSQL database
+        - Redis cache
+        - Elasticsearch search engine
+        
+        This endpoint is not rate limited and can be used by load balancers and monitoring systems.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              example:
+                status: "ok"
+                info:
+                  database:
+                    status: "up"
+                  redis:
+                    status: "up"
+                  elasticsearch:
+                    status: "up"
+                error: {}
+                details:
+                  database:
+                    status: "up"
+                  redis:
+                    status: "up"
+                  elasticsearch:
+                    status: "up"
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              example:
+                status: "error"
+                info:
+                  database:
+                    status: "up"
+                error:
+                  redis:
+                    status: "down"
+                    message: "Connection refused"
+                  elasticsearch:
+                    status: "down"
+                    message: "Connection timeout"
+                details:
+                  database:
+                    status: "up"
+                  redis:
+                    status: "down"
+                    message: "Connection refused"
+                  elasticsearch:
+                    status: "down"
+                    message: "Connection timeout"
+
+  /discovery/search:
+    get:
+      tags:
+        - Discovery
+      summary: Search videos
+      description: |
+        Search and filter videos with full-text search and multiple filter options.
+        
+        ## Search Behavior
+        - The `q` parameter performs full-text search on title and description
+        - If `q` is not provided, returns all videos matching other filters
+        - Search results are scored by relevance when `sort=relevance`
+        
+        ## Filtering
+        Combine multiple filters to narrow results:
+        - `category`: Exact match on video category
+        - `type`: Filter by video_podcast or documentary
+        - `tags`: Filter by one or more tags (videos must have all specified tags)
+        - `startDate`/`endDate`: Filter by publication date range
+        
+        ## Sorting
+        - `relevance` (default when q is provided): Best matches first
+        - `date`: Newest videos first
+        - `popular`: Most viewed/popular videos first
+        
+        **Rate Limit**: 100 requests per minute.
+      operationId: searchVideos
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Search query for title and description (full-text search)
+          schema:
+            type: string
+          example: "technology tutorial"
+        - name: category
+          in: query
+          required: false
+          description: Filter by exact category name
+          schema:
+            type: string
+          example: "Technology"
+        - name: type
+          in: query
+          required: false
+          description: Filter by video type
+          schema:
+            $ref: '#/components/schemas/VideoType'
+          example: "video_podcast"
+        - name: tags
+          in: query
+          required: false
+          description: |
+            Filter by tags. Provide multiple tags by repeating the query param.
+            Videos must contain ALL specified tags.
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: ["technology", "tutorial"]
+        - name: startDate
+          in: query
+          required: false
+          description: Only return videos published on or after this date (ISO 8601)
+          schema:
+            type: string
+            format: date
+          example: "2024-01-01"
+        - name: endDate
+          in: query
+          required: false
+          description: Only return videos published on or before this date (ISO 8601)
+          schema:
+            type: string
+            format: date
+          example: "2024-12-31"
+        - name: sort
+          in: query
+          required: false
+          description: |
+            Sort order for results:
+            - `relevance`: Best matches first (default when q is provided)
+            - `date`: Newest videos first
+            - `popular`: Most viewed videos first
+          schema:
+            type: string
+            enum: [relevance, date, popular]
+            default: relevance
+          example: "date"
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Search results with videos and pagination metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+              examples:
+                with_results:
+                  summary: Search with results
+                  value:
+                    data:
+                      - id: "550e8400-e29b-41d4-a716-446655440000"
+                        title: "Introduction to NestJS"
+                        description: "A comprehensive guide to building scalable Node.js applications with NestJS"
+                        category: "Technology"
+                        type: "video_podcast"
+                        tags: ["nestjs", "typescript", "backend"]
+                        duration: 3600
+                        publicationDate: "2024-01-15"
+                        thumbnailUrl: "https://img.youtube.com/vi/abc123/maxresdefault.jpg"
+                        platform: "youtube"
+                        embedUrl: "https://www.youtube.com/embed/abc123"
+                      - id: "660e8400-e29b-41d4-a716-446655440001"
+                        title: "Advanced TypeScript Patterns"
+                        description: "Deep dive into advanced TypeScript patterns for enterprise applications"
+                        category: "Technology"
+                        type: "video_podcast"
+                        tags: ["typescript", "patterns", "advanced"]
+                        duration: 2700
+                        publicationDate: "2024-02-20"
+                        thumbnailUrl: "https://img.youtube.com/vi/xyz789/maxresdefault.jpg"
+                        platform: "youtube"
+                        embedUrl: "https://www.youtube.com/embed/xyz789"
+                    total: 42
+                    page: 1
+                    limit: 20
+                    totalPages: 3
+                    hasNext: true
+                    hasPrev: false
+                empty_results:
+                  summary: Search with no results
+                  value:
+                    data: []
+                    total: 0
+                    page: 1
+                    limit: 20
+                    totalPages: 0
+                    hasNext: false
+                    hasPrev: false
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+              example:
+                statusCode: 400
+                message:
+                  - "page must not be less than 1"
+                  - "limit must not be greater than 100"
+                error: "Bad Request"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 429
+                message: "Too many requests. Rate limit: 100/min"
+                error: "Too Many Requests"
+
+  /discovery/videos/{id}:
+    get:
+      tags:
+        - Discovery
+      summary: Get a video by ID
+      description: |
+        Retrieve a specific video by its UUID for public viewing.
+        
+        This endpoint returns full video details including embed URL for
+        displaying the video player in your application.
+        
+        **Rate Limit**: 200 requests per minute.
+      operationId: getVideo
+      parameters:
+        - $ref: '#/components/parameters/VideoId'
+      responses:
+        '200':
+          description: Video found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440000"
+                title: "Introduction to NestJS"
+                description: "A comprehensive guide to building scalable Node.js applications with NestJS. This video covers everything from basic setup to advanced patterns including dependency injection, modules, and microservices architecture."
+                category: "Technology"
+                type: "video_podcast"
+                tags: ["nestjs", "typescript", "backend", "nodejs", "tutorial"]
+                duration: 3600
+                publicationDate: "2024-01-15"
+                videoUrl: "https://www.youtube.com/watch?v=abc123"
+                thumbnailUrl: "https://img.youtube.com/vi/abc123/maxresdefault.jpg"
+                platform: "youtube"
+                platformVideoId: "abc123"
+                embedUrl: "https://www.youtube.com/embed/abc123"
+                createdAt: "2024-01-15T10:30:00.000Z"
+                updatedAt: "2024-01-15T10:30:00.000Z"
+        '404':
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 404
+                message: "Video not found"
+                error: "Not Found"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 429
+                message: "Too many requests. Rate limit: 200/min"
+                error: "Too Many Requests"
+
+  /discovery/categories/{category}:
+    get:
+      tags:
+        - Discovery
+      summary: Get videos by category
+      description: |
+        Retrieve all videos in a specific category with pagination.
+        
+        Categories are case-sensitive. Common categories include:
+        - Technology
+        - Science
+        - History
+        - Entertainment
+        - Education
+        
+        **Rate Limit**: 100 requests per minute.
+      operationId: getVideosByCategory
+      parameters:
+        - name: category
+          in: path
+          required: true
+          description: Category name (case-sensitive)
+          schema:
+            type: string
+          examples:
+            technology:
+              summary: Technology category
+              value: "Technology"
+            science:
+              summary: Science category
+              value: "Science"
+            history:
+              summary: History category
+              value: "History"
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Videos in the specified category
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+              example:
+                data:
+                  - id: "550e8400-e29b-41d4-a716-446655440000"
+                    title: "Introduction to NestJS"
+                    description: "A comprehensive guide to building scalable Node.js applications"
+                    category: "Technology"
+                    type: "video_podcast"
+                    tags: ["nestjs", "typescript", "backend"]
+                    duration: 3600
+                    publicationDate: "2024-01-15"
+                    thumbnailUrl: "https://img.youtube.com/vi/abc123/maxresdefault.jpg"
+                    platform: "youtube"
+                    embedUrl: "https://www.youtube.com/embed/abc123"
+                  - id: "770e8400-e29b-41d4-a716-446655440002"
+                    title: "Docker for Beginners"
+                    description: "Learn containerization with Docker from scratch"
+                    category: "Technology"
+                    type: "video_podcast"
+                    tags: ["docker", "devops", "containers"]
+                    duration: 2400
+                    publicationDate: "2024-03-01"
+                    thumbnailUrl: "https://img.youtube.com/vi/def456/maxresdefault.jpg"
+                    platform: "youtube"
+                    embedUrl: "https://www.youtube.com/embed/def456"
+                total: 25
+                page: 1
+                limit: 20
+                totalPages: 2
+                hasNext: true
+                hasPrev: false
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 429
+                message: "Too many requests. Rate limit: 100/min"
+                error: "Too Many Requests"
+
+  /discovery/types/{type}:
+    get:
+      tags:
+        - Discovery
+      summary: Get videos by type
+      description: |
+        Retrieve all videos of a specific type with pagination.
+        
+        Available types:
+        - `video_podcast`: Video podcast episodes, interviews, discussions
+        - `documentary`: Documentary films and long-form content
+        
+        **Rate Limit**: 100 requests per minute.
+      operationId: getVideosByType
+      parameters:
+        - name: type
+          in: path
+          required: true
+          description: Video type
+          schema:
+            $ref: '#/components/schemas/VideoType'
+          examples:
+            podcast:
+              summary: Video podcast type
+              value: "video_podcast"
+            documentary:
+              summary: Documentary type
+              value: "documentary"
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Videos of the specified type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+              example:
+                data:
+                  - id: "880e8400-e29b-41d4-a716-446655440003"
+                    title: "The Rise of AI"
+                    description: "An in-depth documentary exploring the history and future of artificial intelligence"
+                    category: "Technology"
+                    type: "documentary"
+                    tags: ["ai", "technology", "future", "history"]
+                    duration: 5400
+                    publicationDate: "2024-02-15"
+                    thumbnailUrl: "https://img.youtube.com/vi/ghi789/maxresdefault.jpg"
+                    platform: "youtube"
+                    embedUrl: "https://www.youtube.com/embed/ghi789"
+                  - id: "990e8400-e29b-41d4-a716-446655440004"
+                    title: "Ocean Mysteries"
+                    description: "Explore the depths of our oceans and the creatures that inhabit them"
+                    category: "Science"
+                    type: "documentary"
+                    tags: ["ocean", "nature", "science", "exploration"]
+                    duration: 4800
+                    publicationDate: "2024-01-30"
+                    thumbnailUrl: "https://img.youtube.com/vi/jkl012/maxresdefault.jpg"
+                    platform: "youtube"
+                    embedUrl: "https://www.youtube.com/embed/jkl012"
+                total: 12
+                page: 1
+                limit: 20
+                totalPages: 1
+                hasNext: false
+                hasPrev: false
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                statusCode: 429
+                message: "Too many requests. Rate limit: 100/min"
+                error: "Too Many Requests"
+
+components:
+  parameters:
+    VideoId:
+      name: id
+      in: path
+      required: true
+      description: Video UUID
+      schema:
+        type: string
+        format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Page number (1-based)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      example: 1
+
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Number of results per page (max 100)
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      example: 20
+
+  schemas:
+    WelcomeResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Welcome message
+          example: "Welcome to the Octonyah Discovery API!"
+
+    HealthCheckResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+          description: Overall health status
+        info:
+          type: object
+          description: Details of healthy dependencies
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [up]
+        error:
+          type: object
+          description: Details of unhealthy dependencies
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [down]
+              message:
+                type: string
+        details:
+          type: object
+          description: Combined status of all dependencies
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+                enum: [up, down]
+              message:
+                type: string
+
+    VideoType:
+      type: string
+      enum:
+        - video_podcast
+        - documentary
+      description: |
+        Type of video content:
+        - `video_podcast`: Video podcast episode, interview, or discussion
+        - `documentary`: Documentary film or long-form content
+
+    VideoPlatform:
+      type: string
+      enum:
+        - native
+        - youtube
+      description: |
+        Source platform of the video:
+        - `native`: Uploaded directly to our platform
+        - `youtube`: Imported from YouTube
+
+    Video:
+      type: object
+      required:
+        - id
+        - title
+        - category
+        - type
+        - duration
+        - publicationDate
+        - platform
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the video
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        title:
+          type: string
+          maxLength: 255
+          description: Video title
+          example: "Introduction to NestJS"
+        description:
+          type: string
+          nullable: true
+          description: Video description
+          example: "A comprehensive guide to building scalable Node.js applications with NestJS"
+        category:
+          type: string
+          maxLength: 100
+          description: Video category (e.g., Technology, Science, History)
+          example: "Technology"
+        type:
+          $ref: '#/components/schemas/VideoType'
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: Tags/keywords for search and filtering
+          example: ["nestjs", "typescript", "backend"]
+        duration:
+          type: integer
+          description: Video duration in seconds
+          minimum: 0
+          example: 3600
+        publicationDate:
+          type: string
+          format: date
+          description: Publication date
+          example: "2024-01-15"
+        videoUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+          description: URL to watch the video
+          example: "https://www.youtube.com/watch?v=abc123"
+        thumbnailUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+          description: URL of the video thumbnail image
+          example: "https://img.youtube.com/vi/abc123/maxresdefault.jpg"
+        platform:
+          $ref: '#/components/schemas/VideoPlatform'
+        platformVideoId:
+          type: string
+          maxLength: 100
+          nullable: true
+          description: Video ID on the source platform
+          example: "abc123"
+        embedUrl:
+          type: string
+          format: uri
+          maxLength: 500
+          nullable: true
+          description: Embeddable URL for the video player
+          example: "https://www.youtube.com/embed/abc123"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the video was created in our system
+          example: "2024-01-15T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the video was last updated
+          example: "2024-01-15T10:30:00.000Z"
+
+    SearchResponse:
+      type: object
+      required:
+        - data
+        - total
+        - page
+        - limit
+        - totalPages
+        - hasNext
+        - hasPrev
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Video'
+          description: Array of videos matching the search criteria
+        total:
+          type: integer
+          minimum: 0
+          description: Total number of videos matching the search criteria
+          example: 150
+        page:
+          type: integer
+          minimum: 1
+          description: Current page number (1-based)
+          example: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Number of results per page
+          example: 20
+        totalPages:
+          type: integer
+          minimum: 0
+          description: Total number of pages available
+          example: 8
+        hasNext:
+          type: boolean
+          description: Whether there is a next page
+          example: true
+        hasPrev:
+          type: boolean
+          description: Whether there is a previous page
+          example: false
+
+    ErrorResponse:
+      type: object
+      required:
+        - statusCode
+        - message
+      properties:
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 400
+        message:
+          type: string
+          description: Error message
+          example: "Bad Request"
+        error:
+          type: string
+          description: Error type
+          example: "Bad Request"
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - statusCode
+        - message
+      properties:
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 400
+        message:
+          type: array
+          items:
+            type: string
+          description: List of validation error messages
+          example:
+            - "page must not be less than 1"
+            - "limit must not be greater than 100"
+        error:
+          type: string
+          description: Error type
+          example: "Bad Request"
+
