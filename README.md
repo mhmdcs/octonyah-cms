@@ -513,11 +513,6 @@ Unit tests test individual components (services, controllers, guards, etc.) in i
 
 E2E tests verify the full HTTP request/response cycle using **Supertest**. They test API endpoints with the application bootstrapped (with mocked infrastructure), simulating real client requests.
 
-**Run e2e tests:**
-```bash
-npm run test:e2e
-```
-
 **E2E test coverage includes:**
 - **CMS Service E2E (21 tests):** Authentication flow, JWT token generation, video CRUD operations, role-based access control, input validation
 - **Discovery Service E2E (17 tests):** Search functionality, filtering, pagination, category/type browsing, caching behavior

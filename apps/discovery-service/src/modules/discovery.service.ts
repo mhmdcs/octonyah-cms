@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Video } from '@octonyah/shared-videos';
@@ -21,19 +21,7 @@ export class DiscoveryService {
   }
 
   async getVideo(id: string): Promise<Video> {
-    return this.withCache(buildVideoCacheKey(id), async () => {
-      const video = await this.videoRepository.findOne({ where: { id } });
-      if (!video) throw new Error(`Video with ID ${id} not found`);
-      return video;
-    });
-  }
-
-  private async withCache<T>(key: string, fetchFn: () => Promise<T>): Promise<T> {
-    const cached = await this.cache.get<T>(key);
-    if (cached) return cached;
-    const result = await fetchFn();
-    await this.cache.set(key, result);
-    return result;
+    return this.withCache(buildVideoCacheKey(id), () => this.findVideoOrFail(id));
   }
 
   async getVideosByCategory(category: string, page = 1, limit = 20): Promise<SearchResponseDto> {
@@ -44,12 +32,33 @@ export class DiscoveryService {
     return this.searchVideos({ type: type as Video['type'], page, limit });
   }
 
-  private buildSearchCacheKey(params: SearchVideosDto) {
+  private async findVideoOrFail(id: string): Promise<Video> {
+    const video = await this.videoRepository.findOne({ where: { id } });
+    if (!video) throw new NotFoundException(`Video with ID ${id} not found`);
+    return video;
+  }
+
+  private async withCache<T>(key: string, fetchFn: () => Promise<T>): Promise<T> {
+    const cached = await this.cache.get<T>(key);
+    if (cached) return cached;
+
+    const result = await fetchFn();
+    await this.cache.set(key, result);
+    return result;
+  }
+
+  private buildSearchCacheKey(params: SearchVideosDto): string {
     const { q, category, type, tags, sort, startDate, endDate, page, limit } = params;
     const parts = [
-      q?.trim() ?? '', category?.trim() ?? '', type ?? '',
-      (tags ? [...tags].sort() : []).join(','), sort ?? '',
-      startDate ?? '', endDate ?? '', page, limit,
+      q?.trim() ?? '',
+      category?.trim() ?? '',
+      type ?? '',
+      (tags ? [...tags].sort() : []).join(','),
+      sort ?? '',
+      startDate ?? '',
+      endDate ?? '',
+      page,
+      limit,
     ];
     return `${SEARCH_CACHE_PREFIX}:${parts.join('|')}`;
   }

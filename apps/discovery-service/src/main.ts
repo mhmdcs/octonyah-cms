@@ -2,28 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { MicroserviceOptions } from '@nestjs/microservices';
-import { createValidationPipe, setupSwagger } from '@octonyah/shared-config';
+import { createValidationPipe, setupSwagger, findOpenApiSpec } from '@octonyah/shared-config';
 import { RmqModule } from '@octonyah/shared-events';
-import * as path from 'path';
-import * as fs from 'fs';
-
-function findOpenApiSpec(): string {
-  // Try multiple possible locations for openapi.yaml
-  const possiblePaths = [
-    path.join(__dirname, '../../openapi.yaml'),           // Development
-    path.join(__dirname, '../../../apps/discovery-service/openapi.yaml'),  // Docker compiled
-    path.join(process.cwd(), 'apps/discovery-service/openapi.yaml'),       // From project root
-  ];
-  
-  for (const specPath of possiblePaths) {
-    if (fs.existsSync(specPath)) {
-      return specPath;
-    }
-  }
-  
-  console.warn('OpenAPI spec not found, Swagger UI will not be available');
-  return '';
-}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -32,10 +12,9 @@ async function bootstrap() {
   app.useGlobalPipes(createValidationPipe());
 
   const rmqOptions: MicroserviceOptions = RmqModule.forMicroservice();
-
   app.connectMicroservice(rmqOptions);
 
-  const specPath = findOpenApiSpec();
+  const specPath = findOpenApiSpec({ serviceName: 'discovery-service', dirname: __dirname });
   if (specPath) {
     setupSwagger(app, { specPath, path: 'api' });
   }

@@ -65,17 +65,31 @@ export class VideoSearchService implements OnModuleInit {
 
   async search(dto: SearchVideosDto): Promise<SearchResponseDto> {
     const { page = 1, limit = 20, sort } = dto;
-    const query = { bool: { must: this.buildMustClause(dto), filter: this.buildFilterClause(dto) } };
+
+    const query = {
+      bool: {
+        must: this.buildMustClause(dto),
+        filter: this.buildFilterClause(dto),
+      },
+    };
 
     try {
       const response = await this.esService.search<VideoSearchDocument>({
-        index: this.indexName, from: (page - 1) * limit, size: limit, query, sort: this.buildSort(sort),
+        index: this.indexName,
+        from: (page - 1) * limit,
+        size: limit,
+        query,
+        sort: this.buildSort(sort),
       });
       return this.buildSearchResponse(response, page, limit);
     } catch (error) {
       this.logger.error('Elasticsearch search failed', error);
-      return { data: [], total: 0, page, limit, totalPages: 0, hasNext: false, hasPrev: false };
+      return this.emptySearchResponse(page, limit);
     }
+  }
+
+  private emptySearchResponse(page: number, limit: number): SearchResponseDto {
+    return { data: [], total: 0, page, limit, totalPages: 0, hasNext: false, hasPrev: false };
   }
 
   private buildMustClause({ q }: SearchVideosDto): any[] {
@@ -99,9 +113,21 @@ export class VideoSearchService implements OnModuleInit {
 
   private buildSearchResponse(response: any, page: number, limit: number): SearchResponseDto {
     const total = (response.hits.total as SearchTotalHits).value;
-    const data = response.hits.hits.map((hit: any) => this.toVideo(hit._source)).filter((v: Video | null): v is Video => !!v);
     const totalPages = Math.ceil(total / limit) || 1;
-    return { data, total, page, limit, totalPages, hasNext: page < totalPages, hasPrev: page > 1 };
+
+    const data = response.hits.hits
+      .map((hit: any) => this.toVideo(hit._source))
+      .filter((video: Video | null): video is Video => video !== null);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    };
   }
 
   async indexVideo(video: Partial<Video>): Promise<void> {
@@ -133,15 +159,12 @@ export class VideoSearchService implements OnModuleInit {
       type: video.type ?? VideoType.VIDEO_PODCAST,
       tags: video.tags ?? [],
       duration: video.duration ?? 0,
-      publicationDate:
-        this.toIso(video.publicationDate) ?? new Date().toISOString(),
+      publicationDate: this.toIso(video.publicationDate) ?? new Date().toISOString(),
       createdAt: this.toIso(video.createdAt),
       updatedAt: this.toIso(video.updatedAt),
       deletedAt: this.toIso(video.deletedAt),
-      // Media URLs
       videoUrl: video.videoUrl,
       thumbnailUrl: video.thumbnailUrl,
-      // Platform-related fields
       platform: video.platform ?? VideoPlatform.NATIVE,
       platformVideoId: video.platformVideoId,
       embedUrl: video.embedUrl,
@@ -150,17 +173,28 @@ export class VideoSearchService implements OnModuleInit {
 
   private toVideo(doc?: VideoSearchDocument): Video | null {
     if (!doc) return null;
+
     return {
-      id: doc.id, title: doc.title, description: doc.description ?? null,
-      category: doc.category, type: doc.type,
-      tags: doc.tags ?? [], duration: doc.duration,
-      publicationDate: doc.publicationDate ? new Date(doc.publicationDate) : undefined,
-      createdAt: doc.createdAt ? new Date(doc.createdAt) : undefined,
-      updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : undefined,
-      videoUrl: doc.videoUrl, thumbnailUrl: doc.thumbnailUrl,
+      id: doc.id,
+      title: doc.title,
+      description: doc.description ?? null,
+      category: doc.category,
+      type: doc.type,
+      tags: doc.tags ?? [],
+      duration: doc.duration,
+      publicationDate: this.parseDate(doc.publicationDate),
+      createdAt: this.parseDate(doc.createdAt),
+      updatedAt: this.parseDate(doc.updatedAt),
+      videoUrl: doc.videoUrl,
+      thumbnailUrl: doc.thumbnailUrl,
       platform: doc.platform ?? VideoPlatform.NATIVE,
-      platformVideoId: doc.platformVideoId, embedUrl: doc.embedUrl,
+      platformVideoId: doc.platformVideoId,
+      embedUrl: doc.embedUrl,
     } as Video;
+  }
+
+  private parseDate(value?: string): Date | undefined {
+    return value ? new Date(value) : undefined;
   }
 
   private toIso(value?: Date | string): string | undefined {
