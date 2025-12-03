@@ -130,10 +130,10 @@ describe('DiscoveryController', () => {
       expect(mockDiscoveryService.getVideo).toHaveBeenCalledWith('test-uuid-1');
     });
 
-    it('should throw HttpException when video not found', async () => {
+    it('should throw error when video not found', async () => {
       mockDiscoveryService.getVideo.mockRejectedValue(new Error('Video not found'));
 
-      await expect(controller.getVideo('non-existent')).rejects.toThrow(HttpException);
+      await expect(controller.getVideo('non-existent')).rejects.toThrow('Video not found');
     });
 
     it('should rethrow HttpException as-is', async () => {
@@ -149,7 +149,7 @@ describe('DiscoveryController', () => {
       const searchResponse = createMockSearchResponse();
       mockDiscoveryService.getVideosByCategory.mockResolvedValue(searchResponse);
 
-      const result = await controller.getByCategory('Technology', 1, 20);
+      const result = await controller.getByCategory('Technology', { page: 1, limit: 20 });
 
       expect(result).toEqual(searchResponse);
       expect(mockDiscoveryService.getVideosByCategory).toHaveBeenCalledWith(
@@ -163,7 +163,7 @@ describe('DiscoveryController', () => {
       const searchResponse = createMockSearchResponse();
       mockDiscoveryService.getVideosByCategory.mockResolvedValue(searchResponse);
 
-      await controller.getByCategory('Technology', undefined, undefined);
+      await controller.getByCategory('Technology', { page: undefined, limit: undefined });
 
       expect(mockDiscoveryService.getVideosByCategory).toHaveBeenCalledWith(
         'Technology',
@@ -178,7 +178,7 @@ describe('DiscoveryController', () => {
       const searchResponse = createMockSearchResponse();
       mockDiscoveryService.getVideosByType.mockResolvedValue(searchResponse);
 
-      const result = await controller.getByType('video_podcast', 1, 20);
+      const result = await controller.getByType('video_podcast', { page: 1, limit: 20 });
 
       expect(result).toEqual(searchResponse);
       expect(mockDiscoveryService.getVideosByType).toHaveBeenCalledWith(

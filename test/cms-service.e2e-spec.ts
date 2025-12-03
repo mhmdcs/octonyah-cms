@@ -220,7 +220,7 @@ describe('CMS Service (e2e)', () => {
       embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     };
 
-    describe('/cms/videos/import (POST)', () => {
+    describe('/cms/videos (POST)', () => {
       const importDto = {
         url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         category: 'Technology',
@@ -247,7 +247,7 @@ describe('CMS Service (e2e)', () => {
         mockVideoRepository.save.mockResolvedValue(mockVideo);
 
         const response = await request(app.getHttpServer())
-          .post('/cms/videos/import')
+          .post('/cms/videos')
           .set('Authorization', `Bearer ${authToken}`)
           .send(importDto)
           .expect(201);
@@ -258,14 +258,14 @@ describe('CMS Service (e2e)', () => {
 
       it('should reject without authentication', async () => {
         return request(app.getHttpServer())
-          .post('/cms/videos/import')
+          .post('/cms/videos')
           .send(importDto)
           .expect(401);
       });
 
       it('should reject with invalid token', async () => {
         return request(app.getHttpServer())
-          .post('/cms/videos/import')
+          .post('/cms/videos')
           .set('Authorization', 'Bearer invalid-token')
           .send(importDto)
           .expect(401);
@@ -278,7 +278,7 @@ describe('CMS Service (e2e)', () => {
         };
 
         return request(app.getHttpServer())
-          .post('/cms/videos/import')
+          .post('/cms/videos')
           .set('Authorization', `Bearer ${authToken}`)
           .send(invalidDto)
           .expect(400);
@@ -291,7 +291,7 @@ describe('CMS Service (e2e)', () => {
         };
 
         return request(app.getHttpServer())
-          .post('/cms/videos/import')
+          .post('/cms/videos')
           .set('Authorization', `Bearer ${authToken}`)
           .send(invalidDto)
           .expect(400);
@@ -305,7 +305,7 @@ describe('CMS Service (e2e)', () => {
         mockVideoRepository.save.mockResolvedValue(customVideo);
 
         const response = await request(app.getHttpServer())
-          .post('/cms/videos/import')
+          .post('/cms/videos')
           .set('Authorization', `Bearer ${authToken}`)
           .send({ ...importDto, title: 'Custom Title' })
           .expect(201);

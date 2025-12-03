@@ -28,7 +28,7 @@ import {
 export class VideosController {
   constructor(private readonly videosService: VideosService) {}
 
-  @Post('import')
+  @Post()
   @Roles('admin', 'editor')
   @ThrottleCmsWrite()
   @HttpCode(HttpStatus.CREATED)

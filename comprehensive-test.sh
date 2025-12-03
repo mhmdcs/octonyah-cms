@@ -274,7 +274,7 @@ section_header "3. VIDEO IMPORT TESTS (YouTube API)"
 subsection_header "Import Valid YouTube Videos"
 # Import first video
 test_info "Importing YouTube video 1: ${YOUTUBE_VIDEOS[0]}"
-IMPORT1=$(curl -s -X POST $CMS_URL/cms/videos/import \
+IMPORT1=$(curl -s -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -d "{
@@ -311,7 +311,7 @@ fi
 
 # Import second video with custom overrides
 test_info "Importing YouTube video 2 with custom title and tags..."
-IMPORT2=$(curl -s -X POST $CMS_URL/cms/videos/import \
+IMPORT2=$(curl -s -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -d "{
@@ -351,7 +351,7 @@ fi
 
 # Import third video with editor role
 test_info "Importing YouTube video 3 with editor role..."
-IMPORT3=$(curl -s -X POST $CMS_URL/cms/videos/import \
+IMPORT3=$(curl -s -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $EDITOR_TOKEN" \
     -d "{
@@ -369,7 +369,7 @@ fi
 
 # Import more videos for search testing
 test_info "Importing YouTube video 4..."
-IMPORT4=$(curl -s -X POST $CMS_URL/cms/videos/import \
+IMPORT4=$(curl -s -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -d "{
@@ -387,7 +387,7 @@ else
 fi
 
 test_info "Importing YouTube video 5..."
-IMPORT5=$(curl -s -X POST $CMS_URL/cms/videos/import \
+IMPORT5=$(curl -s -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -d "{
@@ -407,7 +407,7 @@ fi
 subsection_header "Import Error Handling"
 
 test_info "Testing duplicate video import..."
-DUPLICATE=$(curl -s -X POST $CMS_URL/cms/videos/import \
+DUPLICATE=$(curl -s -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -d "{
@@ -422,7 +422,7 @@ else
 fi
 
 test_info "Testing invalid URL format..."
-INVALID_URL=$(curl -s -X POST $CMS_URL/cms/videos/import \
+INVALID_URL=$(curl -s -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -d '{
@@ -437,7 +437,7 @@ else
 fi
 
 test_info "Testing unsupported platform URL..."
-UNSUPPORTED=$(curl -s -X POST $CMS_URL/cms/videos/import \
+UNSUPPORTED=$(curl -s -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -d '{
@@ -452,7 +452,7 @@ else
 fi
 
 test_info "Testing missing required fields..."
-MISSING_FIELDS=$(curl -s -X POST $CMS_URL/cms/videos/import \
+MISSING_FIELDS=$(curl -s -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -d '{
@@ -465,7 +465,7 @@ else
 fi
 
 test_info "Testing invalid video type..."
-INVALID_TYPE=$(curl -s -X POST $CMS_URL/cms/videos/import \
+INVALID_TYPE=$(curl -s -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -d '{
@@ -480,7 +480,7 @@ else
 fi
 
 test_info "Testing import without authentication..."
-UNAUTH_IMPORT=$(curl -s -o /dev/null -w "%{http_code}" -X POST $CMS_URL/cms/videos/import \
+UNAUTH_IMPORT=$(curl -s -o /dev/null -w "%{http_code}" -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -d '{
         "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -923,7 +923,7 @@ section_header "11. ROLE-BASED ACCESS CONTROL"
 subsection_header "Delete Operation (Admin Only)"
 # Create a video specifically for deletion test
 test_info "Creating a video for deletion test..."
-DELETE_TEST_VIDEO=$(curl -s -X POST $CMS_URL/cms/videos/import \
+DELETE_TEST_VIDEO=$(curl -s -X POST $CMS_URL/cms/videos \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -d '{

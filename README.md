@@ -624,7 +624,7 @@ Swagger UI provides:
 #### CMS service (internal)
 - Base URL: `http://localhost:${CMS_PORT}` (default `http://localhost:3000`)
 - `GET /` - Hello World endpoint for testing
-- `POST /cms/videos/import` - **Import a video from external platform** (YouTube, etc.)
+- `POST /cms/videos` - **Import a video from external platform** (YouTube, etc.)
 - `GET /cms/videos` - Get all videos
 - `GET /cms/videos/:id` - Get a video by ID
 - `PATCH /cms/videos/:id` - Update a video
@@ -657,7 +657,7 @@ Both services expose health check endpoints for monitoring and orchestration:
 
 **Import a YouTube video:**
 ```bash
-curl -X POST http://localhost:3000/cms/videos/import \
+curl -X POST http://localhost:3000/cms/videos \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <your-jwt-token>" \
   -d '{

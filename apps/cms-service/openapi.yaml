@@ -231,8 +231,6 @@ paths:
                 statusCode: 429
                 message: "Too many requests. Rate limit: 60/min"
                 error: "Too Many Requests"
-
-  /cms/videos/import:
     post:
       tags:
         - CMS Videos
