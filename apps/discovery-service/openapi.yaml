@@ -28,7 +28,7 @@ info:
     The search endpoint supports:
     - Full-text search across titles and descriptions
     - Filtering by category, type, tags, and date range
-    - Multiple sort options (relevance, date, popularity)
+    - Multiple sort options (relevance, date)
     
     ## Error Handling
     All errors follow a consistent JSON structure with `statusCode`, `message`, and optional `error` fields.
@@ -160,7 +160,6 @@ paths:
         ## Sorting
         - `relevance` (default when q is provided): Best matches first
         - `date`: Newest videos first
-        - `popular`: Most viewed/popular videos first
         
         **Rate Limit**: 100 requests per minute.
       operationId: searchVideos
@@ -222,10 +221,9 @@ paths:
             Sort order for results:
             - `relevance`: Best matches first (default when q is provided)
             - `date`: Newest videos first
-            - `popular`: Most viewed videos first
           schema:
             type: string
-            enum: [relevance, date, popular]
+            enum: [relevance, date]
             default: relevance
           example: "date"
         - $ref: '#/components/parameters/Page'

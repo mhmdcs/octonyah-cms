@@ -769,14 +769,6 @@ else
     test_fail "Sort by date failed"
 fi
 
-test_info "Testing sort by popular..."
-SORT_POP=$(curl -s "$DISCOVERY_URL/discovery/search?sort=popular&page=1&limit=10")
-if echo "$SORT_POP" | grep -q '"data"'; then
-    test_pass "Sort by popular works"
-else
-    test_fail "Sort by popular failed"
-fi
-
 subsection_header "Search Pagination"
 test_info "Testing pagination..."
 PAGE1=$(curl -s "$DISCOVERY_URL/discovery/search?page=1&limit=2")

@@ -19,11 +19,11 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 
 ### Content Management System (CMS)
 - CRUD operations for videos (video podcasts and documentaries)
-- **Soft delete functionality** - Videos are soft-deleted (marked with `deletedAt` timestamp) instead of being permanently removed, allowing for recovery and audit trails
+- Soft delete functionality - Videos are soft-deleted (marked with `deletedAt` timestamp) instead of being permanently removed, allowing for recovery and audit trails
   - Soft-deleted videos are automatically excluded from all queries
   - Redis cache and Elasticsearch index are immediately cleared when a video is soft-deleted
   - Automatic cleanup job permanently deletes videos soft-deleted more than 90 days ago
-- **Video importing from external platforms** (YouTube support built-in, extensible for other platforms)
+- Video importing from external platforms (YouTube support built-in, extensible for other platforms)
   - Automatic metadata extraction (title, description, duration, thumbnail, tags)
   - Platform thumbnail URLs stored directly (no download - YouTube thumbnails are CDN-hosted and reliable)
   - Duplicate detection to prevent re-importing the same video
@@ -36,7 +36,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - JWT auth + RBAC (admin, editor) for CMS-only endpoints
 - Admin-only Elasticsearch reindex trigger for search index rebuilds
 - Health check endpoints for monitoring and orchestration
-- **Rate limiting** - Redis-backed distributed rate limiting to prevent abuse
+- Rate limiting - Redis-backed distributed rate limiting to prevent abuse
 
 ### Discovery System
 - Public API endpoints for searching videos and content
@@ -48,7 +48,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - Elasticsearch secondary index powering fast full-text search, filters, and sort options
 - BullMQ-powered background job workers that reindex Elasticsearch asynchronously
 - Health check endpoints monitoring database, Redis, and Elasticsearch connectivity
-- **Rate limiting** - Redis-backed distributed rate limiting for public API protection
+- Rate limiting - Redis-backed distributed rate limiting for public API protection
 
 ## Architecture
 
@@ -558,7 +558,7 @@ docker exec octonyah-redis redis-cli FLUSHALL
 | **Authentication** | Admin/editor login, invalid credentials, missing fields validation, JWT token generation |
 | **YouTube Video Import** | Import 5 real YouTube videos, metadata extraction (title, description, duration, thumbnail), custom overrides, duplicate detection, unsupported platforms |
 | **Video CRUD (CMS)** | Get all videos, get by ID, update title/category/tags/type/date, validation errors, 404 handling |
-| **Discovery Search** | Full-text search, category/type/tags filters, date range, sorting (relevance/date/popular), pagination |
+| **Discovery Search** | Full-text search, category/type/tags filters, date range, sorting (relevance/date), pagination |
 | **Discovery Browse** | Get video by ID, browse by category, browse by type, pagination |
 | **Reindex Operation** | Admin can reindex, editor denied (403) |
 | **Role-Based Access** | Editor cannot delete (403), admin can delete (204), soft delete verification |
@@ -624,12 +624,12 @@ Swagger UI provides:
 #### CMS service (internal)
 - Base URL: `http://localhost:${CMS_PORT}` (default `http://localhost:3000`)
 - `GET /` - Hello World endpoint for testing
-- `POST /cms/videos` - **Import a video from external platform** (YouTube, etc.)
+- `POST /cms/videos` - Import a video from external platform (YouTube, etc.)
 - `GET /cms/videos` - Get all videos
 - `GET /cms/videos/:id` - Get a video by ID
 - `PATCH /cms/videos/:id` - Update a video
 - `DELETE /cms/videos/:id` - Soft delete a video
-- `POST /cms/videos/reindex` - **Trigger full Elasticsearch reindex** (admin only)
+- `POST /cms/videos/reindex` - Trigger full Elasticsearch reindex (admin only)
 
 #### Discovery service (public)
 - Base URL: `http://localhost:${DISCOVERY_PORT}` (default `http://localhost:3001`)
@@ -650,7 +650,7 @@ Both services expose health check endpoints for monitoring and orchestration:
 - `category`, `type` – Exact-match filters
 - `tags` – Repeatable query param for multi-tag filtering (`?tags=tech&tags=history`)
 - `startDate` / `endDate` – Filter by publication date range (ISO strings)
-- `sort` – `relevance` (default), `date` (newest first), or `popular`
+- `sort` – `relevance` (default) or `date` (newest first)
 - `page` / `limit` – Pagination controls (limit capped at 100)
 
 ### Example API Calls

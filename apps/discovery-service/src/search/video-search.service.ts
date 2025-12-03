@@ -204,7 +204,6 @@ export class VideoSearchService implements OnModuleInit {
   private buildSort(sort?: string) {
     const sortMap: Record<string, string[]> = {
       date: ['publicationDate:desc'],
-      popular: ['publicationDate:desc'], // fallback to date sorting
     };
     return sort ? sortMap[sort] : undefined;
   }

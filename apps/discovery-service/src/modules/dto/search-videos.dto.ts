@@ -76,11 +76,10 @@ export class SearchVideosDto {
    * Sort order for the results:
    * - relevance: Best matches first (default when q is provided)
    * - date: Newest videos first
-   * - popular: Most viewed videos first
    */
   @IsOptional()
-  @IsIn(['relevance', 'date', 'popular'])
-  sort?: 'relevance' | 'date' | 'popular';
+  @IsIn(['relevance', 'date'])
+  sort?: 'relevance' | 'date';
 
   /**
    * Only return videos published on or after this date (ISO string).
