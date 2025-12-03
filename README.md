@@ -10,6 +10,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - [Service Layout](#service-layout)
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
 - [Running](#running)
 - [Testing](#testing)
 - [API Documentation](#api-documentation)
@@ -238,8 +239,7 @@ apps/
 │               │   └── update-video.dto.ts
 │               ├── videos.controller.ts
 │               ├── videos.module.ts
-│               ├── videos.service.ts
-│               └── videos.service.spec.ts
+│               └── videos.service.ts
 └── discovery-service/
     └── src/
         ├── app.controller.ts
@@ -315,6 +315,14 @@ libs/
         ├── video-platforms.module.ts
         ├── video-platforms.service.ts
         └── index.ts
+
+test/                                      # All tests (unit + e2e)
+├── cms-service/                           # CMS unit tests
+├── discovery-service/                     # Discovery unit tests
+├── libs/                                  # Shared library unit tests
+├── cms-service.e2e-spec.ts               # CMS e2e tests
+├── discovery-service.e2e-spec.ts         # Discovery e2e tests
+└── jest-e2e.json                         # E2E Jest config
 ```
 
 ### Modular Architecture
@@ -406,10 +414,35 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
 - **@nestjs/terminus** - Health check framework for monitoring service dependencies
 
 ### Development Tools
+- **Node.js v20+** - Required runtime (use `.nvmrc` with nvm for automatic version switching)
 - **Jest** - Testing framework for unit and e2e tests
 - **Supertest** - HTTP assertion library for e2e API testing
 - **ESLint** - Code linting
 - **Prettier** - Code formatting
+
+## Prerequisites
+
+### Node.js Version
+
+This project requires **Node.js v20 or higher**. The repository includes an `.nvmrc` file for automatic version switching.
+
+**Using nvm (recommended):**
+```bash
+# Install nvm if you haven't already
+brew install nvm
+
+# In the project directory, switch to the correct Node.js version
+nvm use
+
+# Or install it if not available
+nvm install
+```
+
+**Without nvm:**
+Ensure you have Node.js v20+ installed by checking:
+```bash
+node -v  # Should output v20.x.x or higher
+```
 
 ## Running
 
@@ -445,7 +478,7 @@ Exposed endpoints:
 
 ## Testing
 
-The project includes comprehensive test coverage with both **unit tests** and **end-to-end (e2e) tests**.
+The project includes comprehensive test coverage with both **unit tests** and **end-to-end (e2e) tests**. All tests are located in the `test/` directory, separate from source code.
 
 ### Unit Tests
 
@@ -464,15 +497,15 @@ npm run test:cov
 ```
 
 **Test coverage includes:**
-- **CMS Service:** Auth service, auth controller, JWT strategy, roles guard, videos service, videos controller, health controller
-- **Discovery Service:** Discovery service, discovery controller, video search service, video index processor, cleanup processor, event listener, health indicators
-- **Shared Libraries:** Redis cache service, cache constants, YouTube provider, video platforms service, ISO8601 duration utils, event publisher, video events publisher, validation pipe config
+- **CMS Service (8 tests):** Auth service, auth controller, JWT strategy, roles guard, videos service, videos controller, health controller, app controller
+- **Discovery Service (11 tests):** Discovery service, discovery controller, video search service, video index processor, queue service, cleanup processor, event listener, health indicators (Redis, Elasticsearch), app controller
+- **Shared Libraries (8 tests):** Redis cache service, cache constants, YouTube provider, video platforms service, ISO8601 duration utils, event publisher, video events publisher, validation pipe config
+
+**Total: 27 test suites, 216 tests**
 
 ### End-to-End (E2E) Tests
 
-E2E tests verify the full HTTP request/response cycle using **Supertest**. They test API endpoints with the application bootstrapped, simulating real client requests.
-
-**Location:** `test/` directory with `.e2e-spec.ts` extension
+E2E tests verify the full HTTP request/response cycle using **Supertest**. They test API endpoints with the application bootstrapped (with mocked infrastructure), simulating real client requests.
 
 **Run e2e tests:**
 ```bash
@@ -480,15 +513,30 @@ npm run test:e2e
 ```
 
 **E2E test coverage includes:**
-- **CMS Service E2E:** Authentication flow, JWT token generation, video CRUD operations, role-based access control, input validation, admin-only reindex
-- **Discovery Service E2E:** Search functionality, filtering, pagination, category/type browsing
+- **CMS Service E2E (21 tests):** Authentication flow, JWT token generation, video CRUD operations, role-based access control, input validation
+- **Discovery Service E2E (17 tests):** Search functionality, filtering, pagination, category/type browsing, caching behavior
+
+**Total: 2 test suites, 38 tests**
+
+### Running All Tests
+
+```bash
+# Run all unit tests
+npm test
+
+# Run all e2e tests
+npm run test:e2e
+
+# Run both unit and e2e tests
+npm test && npm run test:e2e
+```
 
 ### Test Configuration
 
-| Test Type | Config File | Test Pattern | Libraries |
-|-----------|-------------|--------------|-----------|
-| Unit | `package.json` (jest section) | `*.spec.ts` | Jest |
-| E2E | `test/jest-e2e.json` | `*.e2e-spec.ts` | Jest + Supertest |
+| Test Type | Config File | Test Pattern | Location |
+|-----------|-------------|--------------|----------|
+| Unit | `package.json` (jest section) | `*.spec.ts` | `test/**/*.spec.ts` |
+| E2E | `test/jest-e2e.json` | `*.e2e-spec.ts` | `test/*.e2e-spec.ts` |
 
 ## API Documentation
 

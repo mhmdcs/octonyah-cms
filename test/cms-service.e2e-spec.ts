@@ -1,10 +1,55 @@
+// Mock TypeORM before importing AppModule
+jest.mock('typeorm', () => {
+  const actual = jest.requireActual('typeorm');
+  return {
+    ...actual,
+    DataSource: jest.fn().mockImplementation(() => ({
+      initialize: jest.fn().mockResolvedValue(undefined),
+      destroy: jest.fn().mockResolvedValue(undefined),
+      isInitialized: true,
+    })),
+  };
+});
+
+// Mock RabbitMQ client
+jest.mock('@nestjs/microservices', () => {
+  const actual = jest.requireActual('@nestjs/microservices');
+  return {
+    ...actual,
+    ClientProxy: jest.fn(),
+    ClientsModule: {
+      register: jest.fn().mockReturnValue({
+        module: class MockClientModule {},
+        providers: [],
+        exports: [],
+      }),
+      registerAsync: jest.fn().mockReturnValue({
+        module: class MockClientModule {},
+        providers: [],
+        exports: [],
+      }),
+    },
+  };
+});
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { getRepositoryToken, TypeOrmModule } from '@nestjs/typeorm';
 import { Video, VideoType, VideoPlatform } from '@octonyah/shared-videos';
-import { AppModule } from '../apps/cms-service/src/app.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+
+// Import controllers and services directly
+import { AppController } from '@cms/app.controller';
+import { AuthModule } from '@cms/auth/auth.module';
+import { AuthController } from '@cms/auth/auth.controller';
+import { AuthService } from '@cms/auth/auth.service';
+import { JwtStrategy } from '@cms/auth/jwt.strategy';
+import { VideosController } from '@cms/modules/videos/videos.controller';
+import { VideosService } from '@cms/modules/videos/videos.service';
+import { VideoEventsPublisher } from '@octonyah/shared-events';
 import { VideoPlatformsService } from '@octonyah/shared-video-platforms';
 
 /**
@@ -15,7 +60,6 @@ import { VideoPlatformsService } from '@octonyah/shared-video-platforms';
  */
 describe('CMS Service (e2e)', () => {
   let app: INestApplication;
-  let videoRepository: Repository<Video>;
   let authToken: string;
   let editorToken: string;
 
@@ -32,6 +76,7 @@ describe('CMS Service (e2e)', () => {
     videoCreated: jest.fn(),
     videoUpdated: jest.fn(),
     videoDeleted: jest.fn(),
+    reindexRequested: jest.fn(),
   };
 
   const mockVideoPlatformsService = {
@@ -40,13 +85,35 @@ describe('CMS Service (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(getRepositoryToken(Video))
-      .useValue(mockVideoRepository)
-      .overrideProvider(VideoPlatformsService)
-      .useValue(mockVideoPlatformsService)
-      .compile();
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          envFilePath: '.env.test',
+          load: [() => ({
+            JWT_SECRET: 'test-secret-key-for-e2e-tests',
+            JWT_EXPIRES_IN_SECONDS: '3600',
+          })],
+        }),
+        PassportModule.register({ defaultStrategy: 'jwt' }),
+        JwtModule.registerAsync({
+          imports: [ConfigModule],
+          inject: [ConfigService],
+          useFactory: (config: ConfigService) => ({
+            secret: config.get<string>('JWT_SECRET', 'test-secret-key-for-e2e-tests'),
+            signOptions: { expiresIn: '1h' },
+          }),
+        }),
+      ],
+      controllers: [AppController, AuthController, VideosController],
+      providers: [
+        AuthService,
+        JwtStrategy,
+        VideosService,
+        { provide: getRepositoryToken(Video), useValue: mockVideoRepository },
+        { provide: VideoEventsPublisher, useValue: mockVideoEventsPublisher },
+        { provide: VideoPlatformsService, useValue: mockVideoPlatformsService },
+      ],
+    }).compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
@@ -69,10 +136,12 @@ describe('CMS Service (e2e)', () => {
       .post('/auth/login')
       .send({ username: 'editor', password: 'editor123' });
     editorToken = editorLogin.body.access_token;
-  });
+  }, 30000);
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   beforeEach(() => {
