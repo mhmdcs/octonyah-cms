@@ -30,6 +30,7 @@ describe('VideosService', () => {
     videoCreated: jest.fn(),
     videoUpdated: jest.fn(),
     videoDeleted: jest.fn(),
+    reindexRequested: jest.fn(),
   };
 
   const mockVideoPlatformsService = {
@@ -358,6 +359,14 @@ describe('VideosService', () => {
       mockRepository.findOne.mockResolvedValue(null);
 
       await expect(service.remove('non-existent')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('triggerReindex', () => {
+    it('should publish reindex requested event', () => {
+      service.triggerReindex();
+
+      expect(mockVideoEventsPublisher.reindexRequested).toHaveBeenCalled();
     });
   });
 });

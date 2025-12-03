@@ -31,6 +31,7 @@ describe('VideosController', () => {
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
+    triggerReindex: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -170,6 +171,15 @@ describe('VideosController', () => {
       await controller.remove('test-uuid-1');
 
       expect(mockVideosService.remove).toHaveBeenCalledWith('test-uuid-1');
+    });
+  });
+
+  describe('triggerReindex', () => {
+    it('should trigger reindex and return scheduled status', () => {
+      const result = controller.triggerReindex();
+
+      expect(result).toEqual({ status: 'scheduled' });
+      expect(mockVideosService.triggerReindex).toHaveBeenCalled();
     });
   });
 });

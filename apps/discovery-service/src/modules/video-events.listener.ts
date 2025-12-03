@@ -53,6 +53,13 @@ export class VideoEventsListener extends EventListenerBase {
     this.ack(context);
   }
 
+  @EventPattern(VideoEventPattern.ReindexRequested)
+  async handleReindexRequested(@Ctx() context: RmqContext) {
+    this.logger.log('Full reindex requested');
+    await this.videoIndexQueue.enqueueFullReindex();
+    this.ack(context);
+  }
+
   private async invalidateCache(videoId?: string) {
     if (videoId) await this.cache.delete(buildVideoCacheKey(videoId));
     await this.cache.deleteByPrefix(SEARCH_CACHE_PREFIX);

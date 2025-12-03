@@ -33,6 +33,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - RESTful API endpoints for frontend integration
 - Swagger documentation
 - JWT auth + RBAC (admin, editor) for CMS-only endpoints
+- Admin-only Elasticsearch reindex trigger for search index rebuilds
 - Health check endpoints for monitoring and orchestration
 
 ### Discovery System
@@ -198,7 +199,7 @@ Supporting infrastructure (local/dev via Docker Compose):
 
 ## Inter-service Communication
 
-- **Asynchronous messaging**: CMS publishes RabbitMQ events (`video.created`, `video.updated`, `video.deleted`) whenever content changes. Discovery subscribes to the same queue using NestJS's RMQ transport, enabling cache invalidation, search-index refreshes, analytics fan-out, etc.
+- **Asynchronous messaging**: CMS publishes RabbitMQ events (`video.created`, `video.updated`, `video.deleted`, `video.reindex_requested`) whenever content changes or an admin requests a full reindex. Discovery subscribes to the same queue using NestJS's RMQ transport, enabling cache invalidation, search-index refreshes, analytics fan-out, etc.
 - **Shared contracts**: Event names and payload contracts live in `libs/shared-videos`, ensuring publishers and consumers stay aligned without tight coupling.
 - **Caching + invalidation**: Discovery caches read-heavy endpoints (individual video fetch + search queries) in Redis with a configurable TTL. CMS emits events, and the discovery service invalidates affected cache keys immediately (video-specific keys + all search-result caches), keeping cached data fresh without synchronous coordination.
 - **Elasticsearch read model**: Discovery maintains a secondary search index that is updated asynchronously from CMS events and BullMQ worker jobs, allowing fast full-text search, filtering, and sorting without hammering Postgres.
@@ -345,7 +346,7 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
 
 3. **Shared Videos (`libs/shared-videos`)**
    - Hosts the `Video` TypeORM entity and enums so both services stay in sync
-   - Defines event contracts (`video.created`, `video.updated`, `video.deleted`)
+   - Defines event contracts (`video.created`, `video.updated`, `video.deleted`, `video.reindex_requested`)
    - Single source of truth for domain models
 
 4. **Shared Config (`libs/shared-config`)**
@@ -479,8 +480,8 @@ npm run test:e2e
 ```
 
 **E2E test coverage includes:**
-- **CMS Service E2E:** Authentication flow, JWT token generation, video CRUD operations, role-based access control, input validation
-- **Discovery Service E2E:** Search functionality, filtering, pagination, category/type browsing, reindex endpoint
+- **CMS Service E2E:** Authentication flow, JWT token generation, video CRUD operations, role-based access control, input validation, admin-only reindex
+- **Discovery Service E2E:** Search functionality, filtering, pagination, category/type browsing
 
 ### Test Configuration
 
@@ -499,8 +500,8 @@ npm run test:e2e
   - **Editor** – username: `editor`, password: `editor123` (role: editor)
 - Include the JWT via `Authorization: Bearer <token>` on any `/cms/**` request.
 - RBAC summary:
-  - `admin` → full access (create, update, delete)
-  - `editor` → create/update/read only (no delete)
+  - `admin` → full access (create, update, delete, reindex)
+  - `editor` → create/update/read only (no delete, no reindex)
 
 ### Swagger UI
 
@@ -525,6 +526,7 @@ Swagger UI provides:
 - `GET /cms/videos/:id` - Get a video by ID
 - `PATCH /cms/videos/:id` - Update a video
 - `DELETE /cms/videos/:id` - Soft delete a video
+- `POST /cms/videos/reindex` - **Trigger full Elasticsearch reindex** (admin only)
 
 #### Discovery service (public)
 - Base URL: `http://localhost:${DISCOVERY_PORT}` (default `http://localhost:3001`)
@@ -533,7 +535,6 @@ Swagger UI provides:
 - `GET /discovery/videos/:id` - Get a video by ID (public)
 - `GET /discovery/categories/:category` - Get videos by category
 - `GET /discovery/types/:type` - Get videos by type
-- `POST /discovery/search/reindex` - Enqueue a BullMQ job to rebuild the Elasticsearch index
 
 #### Health Check Endpoints
 Both services expose health check endpoints for monitoring and orchestration:

@@ -5,7 +5,6 @@ import {
   Param,
   HttpStatus,
   HttpException,
-  Post,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,15 +17,11 @@ import { DiscoveryService } from './discovery.service';
 import { SearchVideosDto } from './dto/search-videos.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
 import { Video } from '@octonyah/shared-videos';
-import { VideoIndexQueueService } from '../jobs/video-index.queue.service';
 
 @ApiTags('Discovery')
 @Controller('discovery')
 export class DiscoveryController {
-  constructor(
-    private readonly discoveryService: DiscoveryService,
-    private readonly videoIndexQueue: VideoIndexQueueService,
-  ) {}
+  constructor(private readonly discoveryService: DiscoveryService) {}
 
   @Get('search')
   @ApiOperation({
@@ -109,17 +104,5 @@ export class DiscoveryController {
     @Query('limit') limit?: number,
   ): Promise<SearchResponseDto> {
     return this.discoveryService.getVideosByType(type, page, limit);
-  }
-
-  @Post('search/reindex')
-  @ApiOperation({
-    summary: 'Enqueue a full search index rebuild',
-    description:
-      'Triggers a BullMQ job that reads canonical data from Postgres and reindexes Elasticsearch.',
-  })
-  @ApiResponse({ status: 202, description: 'Reindex job enqueued' })
-  async enqueueReindex() {
-    await this.videoIndexQueue.enqueueFullReindex();
-    return { status: 'scheduled' };
   }
 }

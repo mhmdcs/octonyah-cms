@@ -90,6 +90,11 @@ export class VideosService {
     this.videoEventsPublisher.videoDeleted({ id });
   }
 
+  triggerReindex(): void {
+    this.logger.log('Triggering full search index rebuild');
+    this.videoEventsPublisher.reindexRequested();
+  }
+
   private normalizeTags(tags?: string[]): string[] {
     return tags?.map((t) => t.trim()).filter(Boolean) ?? [];
   }

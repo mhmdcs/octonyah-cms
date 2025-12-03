@@ -36,6 +36,10 @@ export class VideoEventsPublisher extends EventPublisherService {
     });
   }
 
+  reindexRequested(): void {
+    this.emitEvent(VideoEventPattern.ReindexRequested, { video: {} });
+  }
+
   private sanitizeVideo(video: Partial<Video>) {
     const { publicationDate, createdAt, updatedAt, ...rest } = video;
     return {

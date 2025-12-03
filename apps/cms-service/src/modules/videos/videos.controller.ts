@@ -99,4 +99,18 @@ export class VideosController {
   remove(@Param('id') id: string) {
     return this.videosService.remove(id);
   }
+
+  @Post('reindex')
+  @Roles('admin')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Trigger full search index rebuild',
+    description:
+      'Enqueues a job that reads canonical data from Postgres and reindexes Elasticsearch. Admin only.',
+  })
+  @ApiResponse({ status: 202, description: 'Reindex job enqueued' })
+  triggerReindex() {
+    this.videosService.triggerReindex();
+    return { status: 'scheduled' };
+  }
 }

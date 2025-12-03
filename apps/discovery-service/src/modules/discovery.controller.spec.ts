@@ -21,7 +21,6 @@ jest.mock('@nestjs/elasticsearch', () => ({
 
 // Mock the services
 jest.mock('./discovery.service');
-jest.mock('../jobs/video-index.queue.service');
 jest.mock('../search/video-search.service', () => ({
   VideoSearchService: jest.fn(),
 }));
@@ -33,22 +32,16 @@ import { SearchVideosDto } from './dto/search-videos.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
 import { DiscoveryController } from './discovery.controller';
 import { DiscoveryService } from './discovery.service';
-import { VideoIndexQueueService } from '../jobs/video-index.queue.service';
 
 describe('DiscoveryController', () => {
   let controller: DiscoveryController;
   let discoveryService: DiscoveryService;
-  let videoIndexQueue: VideoIndexQueueService;
 
   const mockDiscoveryService = {
     searchVideos: jest.fn(),
     getVideo: jest.fn(),
     getVideosByCategory: jest.fn(),
     getVideosByType: jest.fn(),
-  };
-
-  const mockVideoIndexQueueService = {
-    enqueueFullReindex: jest.fn(),
   };
 
   const createMockVideo = (overrides: Partial<Video> = {}): Video => ({
@@ -85,13 +78,11 @@ describe('DiscoveryController', () => {
       controllers: [DiscoveryController],
       providers: [
         { provide: DiscoveryService, useValue: mockDiscoveryService },
-        { provide: VideoIndexQueueService, useValue: mockVideoIndexQueueService },
       ],
     }).compile();
 
     controller = module.get<DiscoveryController>(DiscoveryController);
     discoveryService = module.get<DiscoveryService>(DiscoveryService);
-    videoIndexQueue = module.get<VideoIndexQueueService>(VideoIndexQueueService);
   });
 
   it('should be defined', () => {
@@ -198,17 +189,6 @@ describe('DiscoveryController', () => {
         1,
         20,
       );
-    });
-  });
-
-  describe('enqueueReindex', () => {
-    it('should enqueue full reindex job', async () => {
-      mockVideoIndexQueueService.enqueueFullReindex.mockResolvedValue(undefined);
-
-      const result = await controller.enqueueReindex();
-
-      expect(result).toEqual({ status: 'scheduled' });
-      expect(mockVideoIndexQueueService.enqueueFullReindex).toHaveBeenCalled();
     });
   });
 });
