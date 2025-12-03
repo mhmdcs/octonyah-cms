@@ -5,6 +5,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Video, VideoType, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
 import { AppModule } from '../apps/cms-service/src/app.module';
+import { VideoPlatformsService } from '@octonyah/shared-video-platforms';
 
 /**
  * CMS Service E2E Tests
@@ -43,6 +44,8 @@ describe('CMS Service (e2e)', () => {
     })
       .overrideProvider(getRepositoryToken(Video))
       .useValue(mockVideoRepository)
+      .overrideProvider(VideoPlatformsService)
+      .useValue(mockVideoPlatformsService)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -130,64 +133,85 @@ describe('CMS Service (e2e)', () => {
   });
 
   describe('Videos Module', () => {
-    const createVideoDto = {
+    const mockVideo = {
+      id: 'test-uuid-1',
       title: 'Test Video',
       description: 'Test Description',
       category: 'Technology',
       type: VideoType.VIDEO_PODCAST,
       language: VideoLanguage.ARABIC,
       duration: 3600,
-      publicationDate: '2024-01-01',
       tags: ['tech', 'podcast'],
       popularityScore: 10,
-    };
-
-    const mockVideo = {
-      id: 'test-uuid-1',
-      ...createVideoDto,
       publicationDate: new Date('2024-01-01'),
       createdAt: new Date(),
       updatedAt: new Date(),
-      platform: VideoPlatform.NATIVE,
+      platform: VideoPlatform.YOUTUBE,
+      platformVideoId: 'dQw4w9WgXcQ',
+      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      thumbnailUrl: 'https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
+      embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     };
 
-    describe('/cms/videos (POST)', () => {
-      it('should create a video with valid token', async () => {
+    describe('/cms/videos/import (POST)', () => {
+      const importDto = {
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        category: 'Technology',
+        type: VideoType.VIDEO_PODCAST,
+      };
+
+      const mockMetadata = {
+        platform: VideoPlatform.YOUTUBE,
+        platformVideoId: 'dQw4w9WgXcQ',
+        title: 'Test Video',
+        description: 'Test Description',
+        durationSeconds: 3600,
+        thumbnailUrl: 'https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
+        embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        originalUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        publishedAt: new Date('2024-01-01'),
+        tags: ['tech', 'podcast'],
+      };
+
+      it('should import a video with valid token', async () => {
+        mockVideoPlatformsService.fetchMetadataFromUrl.mockResolvedValue(mockMetadata);
+        mockVideoRepository.findOne.mockResolvedValue(null);
         mockVideoRepository.create.mockReturnValue(mockVideo);
         mockVideoRepository.save.mockResolvedValue(mockVideo);
 
         const response = await request(app.getHttpServer())
-          .post('/cms/videos')
+          .post('/cms/videos/import')
           .set('Authorization', `Bearer ${authToken}`)
-          .send(createVideoDto)
+          .send(importDto)
           .expect(201);
 
         expect(response.body).toHaveProperty('id');
-        expect(response.body.title).toBe(createVideoDto.title);
+        expect(response.body.platform).toBe(VideoPlatform.YOUTUBE);
       });
 
       it('should reject without authentication', async () => {
         return request(app.getHttpServer())
-          .post('/cms/videos')
-          .send(createVideoDto)
+          .post('/cms/videos/import')
+          .send(importDto)
           .expect(401);
       });
 
       it('should reject with invalid token', async () => {
         return request(app.getHttpServer())
-          .post('/cms/videos')
+          .post('/cms/videos/import')
           .set('Authorization', 'Bearer invalid-token')
-          .send(createVideoDto)
+          .send(importDto)
           .expect(401);
       });
 
       it('should validate required fields', async () => {
         const invalidDto = {
-          description: 'Missing required fields',
+          category: 'Technology',
+          // Missing url and type
         };
 
         return request(app.getHttpServer())
-          .post('/cms/videos')
+          .post('/cms/videos/import')
           .set('Authorization', `Bearer ${authToken}`)
           .send(invalidDto)
           .expect(400);
@@ -195,15 +219,31 @@ describe('CMS Service (e2e)', () => {
 
       it('should validate video type enum', async () => {
         const invalidDto = {
-          ...createVideoDto,
+          ...importDto,
           type: 'invalid_type',
         };
 
         return request(app.getHttpServer())
-          .post('/cms/videos')
+          .post('/cms/videos/import')
           .set('Authorization', `Bearer ${authToken}`)
           .send(invalidDto)
           .expect(400);
+      });
+
+      it('should allow optional title override', async () => {
+        mockVideoPlatformsService.fetchMetadataFromUrl.mockResolvedValue(mockMetadata);
+        mockVideoRepository.findOne.mockResolvedValue(null);
+        const customVideo = { ...mockVideo, title: 'Custom Title' };
+        mockVideoRepository.create.mockReturnValue(customVideo);
+        mockVideoRepository.save.mockResolvedValue(customVideo);
+
+        const response = await request(app.getHttpServer())
+          .post('/cms/videos/import')
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({ ...importDto, title: 'Custom Title' })
+          .expect(201);
+
+        expect(response.body.title).toBe('Custom Title');
       });
     });
 
@@ -297,30 +337,5 @@ describe('CMS Service (e2e)', () => {
           .expect(403);
       });
     });
-
-    describe('/cms/videos/import (POST)', () => {
-      it('should import video from external platform', async () => {
-        const importDto = {
-          url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-          category: 'Entertainment',
-          type: VideoType.VIDEO_PODCAST,
-        };
-
-        const importedVideo = {
-          ...mockVideo,
-          platform: VideoPlatform.YOUTUBE,
-          platformVideoId: 'dQw4w9WgXcQ',
-        };
-
-        mockVideoRepository.findOne.mockResolvedValue(null);
-        mockVideoRepository.create.mockReturnValue(importedVideo);
-        mockVideoRepository.save.mockResolvedValue(importedVideo);
-
-        // Note: This test may fail if VideoPlatformsService isn't properly mocked
-        // In a real e2e test, you'd want to either mock the external service
-        // or use a test container
-      });
-    });
   });
 });
-

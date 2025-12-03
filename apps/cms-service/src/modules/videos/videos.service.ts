@@ -2,7 +2,6 @@ import { Injectable, NotFoundException, Logger, ConflictException } from '@nestj
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Video, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
-import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { ImportVideoDto } from './dto/import-video.dto';
 import { VideoEventsPublisher } from '@octonyah/shared-events';
@@ -18,20 +17,6 @@ export class VideosService {
     private readonly videoEventsPublisher: VideoEventsPublisher,
     private readonly videoPlatformsService: VideoPlatformsService,
   ) {}
-
-  async create(dto: CreateVideoDto): Promise<Video> {
-    const video = this.videoRepository.create({
-      ...dto,
-      language: dto.language || VideoLanguage.ARABIC,
-      tags: this.normalizeTags(dto.tags),
-      popularityScore: dto.popularityScore ?? 0,
-      publicationDate: new Date(dto.publicationDate),
-      platform: dto.platform || VideoPlatform.NATIVE,
-    });
-    const saved = await this.videoRepository.save(video);
-    this.videoEventsPublisher.videoCreated(saved);
-    return saved;
-  }
 
   async importFromPlatform(dto: ImportVideoDto): Promise<Video> {
     this.logger.log(`Importing video from URL: ${dto.url}`);
@@ -109,4 +94,3 @@ export class VideosService {
     return tags?.map((t) => t.trim()).filter(Boolean) ?? [];
   }
 }
-

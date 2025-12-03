@@ -233,9 +233,8 @@ apps/
 │           ├── cms.module.ts
 │           └── videos/
 │               ├── dto/
-│               │   ├── create-video.dto.ts
-│               │   ├── update-video.dto.ts
-│               │   └── import-video.dto.ts     # DTO for importing from external platforms
+│               │   ├── import-video.dto.ts     # DTO for importing from external platforms
+│               │   └── update-video.dto.ts
 │               ├── videos.controller.ts
 │               ├── videos.module.ts
 │               ├── videos.service.ts
@@ -521,7 +520,6 @@ Swagger UI provides:
 #### CMS service (internal)
 - Base URL: `http://localhost:${CMS_PORT}` (default `http://localhost:3000`)
 - `GET /` - Hello World endpoint for testing
-- `POST /cms/videos` - Create a new video manually
 - `POST /cms/videos/import` - **Import a video from external platform** (YouTube, etc.)
 - `GET /cms/videos` - Get all videos
 - `GET /cms/videos/:id` - Get a video by ID
@@ -552,26 +550,6 @@ Both services expose health check endpoints for monitoring and orchestration:
 - `page` / `limit` – Pagination controls (limit capped at 100)
 
 ### Example API Calls
-
-**Create a video:**
-```bash
-curl -X POST http://localhost:3000/cms/videos \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <your-jwt-token>" \
-  -d '{
-    "title": "أوكتو",
-    "description": "برنامج ثماني-قصدي أوكتانيه",
-    "category": "Technology",
-    "type": "video_podcast",
-    "language": "ar",
-    "duration": 3600,
-    "publicationDate": "2024-01-15",
-    "videoUrl": "https://example.com/video.mp4",
-    "thumbnailUrl": "https://example.com/thumbnail.jpg"
-  }'
-```
-
-The `thumbnailUrl` field stores the platform thumbnail URL directly (e.g., YouTube thumbnail URL).
 
 **Import a YouTube video:**
 ```bash

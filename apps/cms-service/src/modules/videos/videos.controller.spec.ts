@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { VideosController } from './videos.controller';
 import { VideosService } from './videos.service';
-import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { ImportVideoDto } from './dto/import-video.dto';
 import { Video, VideoType, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
@@ -27,7 +26,6 @@ describe('VideosController', () => {
   };
 
   const mockVideosService = {
-    create: jest.fn(),
     importFromPlatform: jest.fn(),
     findAll: jest.fn(),
     findOne: jest.fn(),
@@ -53,29 +51,6 @@ describe('VideosController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a video', async () => {
-      const createDto: CreateVideoDto = {
-        title: 'Test Video',
-        description: 'Test Description',
-        category: 'Technology',
-        type: VideoType.VIDEO_PODCAST,
-        language: VideoLanguage.ARABIC,
-        duration: 3600,
-        publicationDate: '2024-01-01',
-        tags: ['tech', 'podcast'],
-        popularityScore: 10,
-      };
-
-      mockVideosService.create.mockResolvedValue(mockVideo);
-
-      const result = await controller.create(createDto);
-
-      expect(result).toEqual(mockVideo);
-      expect(mockVideosService.create).toHaveBeenCalledWith(createDto);
-    });
-  });
-
   describe('importVideo', () => {
     it('should import a video from external platform', async () => {
       const importDto: ImportVideoDto = {
@@ -95,6 +70,34 @@ describe('VideosController', () => {
       const result = await controller.importVideo(importDto);
 
       expect(result).toEqual(importedVideo);
+      expect(mockVideosService.importFromPlatform).toHaveBeenCalledWith(importDto);
+    });
+
+    it('should import video with optional overrides', async () => {
+      const importDto: ImportVideoDto = {
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        category: 'Technology',
+        type: VideoType.VIDEO_PODCAST,
+        title: 'Custom Title',
+        description: 'Custom Description',
+        language: VideoLanguage.ENGLISH,
+        tags: ['custom', 'tags'],
+      };
+
+      const importedVideo = {
+        ...mockVideo,
+        title: 'Custom Title',
+        description: 'Custom Description',
+        language: VideoLanguage.ENGLISH,
+        platform: VideoPlatform.YOUTUBE,
+        platformVideoId: 'dQw4w9WgXcQ',
+      };
+
+      mockVideosService.importFromPlatform.mockResolvedValue(importedVideo);
+
+      const result = await controller.importVideo(importDto);
+
+      expect(result.title).toBe('Custom Title');
       expect(mockVideosService.importFromPlatform).toHaveBeenCalledWith(importDto);
     });
   });
@@ -170,4 +173,3 @@ describe('VideosController', () => {
     });
   });
 });
-

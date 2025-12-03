@@ -9,7 +9,6 @@ import { NotFoundException, ConflictException } from '@nestjs/common';
 import { VideosService } from './videos.service';
 import { VideoEventsPublisher } from '@octonyah/shared-events';
 import { VideoPlatformsService, VideoMetadata } from '@octonyah/shared-video-platforms';
-import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { ImportVideoDto } from './dto/import-video.dto';
 
@@ -74,113 +73,6 @@ describe('VideosService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
-  });
-
-  describe('create', () => {
-    it('should create a video with all required fields', async () => {
-      const createDto: CreateVideoDto = {
-        title: 'Test Video',
-        description: 'Test Description',
-        category: 'Technology',
-        type: VideoType.VIDEO_PODCAST,
-        duration: 3600,
-        publicationDate: '2024-01-01',
-        tags: ['tech', 'podcast'],
-        popularityScore: 10,
-      };
-
-      const video = createMockVideo();
-      mockRepository.create.mockReturnValue(video);
-      mockRepository.save.mockResolvedValue(video);
-
-      const result = await service.create(createDto);
-
-      expect(result).toEqual(video);
-      expect(mockRepository.create).toHaveBeenCalled();
-      expect(mockRepository.save).toHaveBeenCalled();
-      expect(mockVideoEventsPublisher.videoCreated).toHaveBeenCalledWith(video);
-    });
-
-    it('should default language to Arabic if not provided', async () => {
-      const createDto: CreateVideoDto = {
-        title: 'Test Video',
-        category: 'Technology',
-        type: VideoType.VIDEO_PODCAST,
-        duration: 3600,
-        publicationDate: '2024-01-01',
-      };
-
-      const video = createMockVideo({ language: VideoLanguage.ARABIC });
-      mockRepository.create.mockReturnValue(video);
-      mockRepository.save.mockResolvedValue(video);
-
-      await service.create(createDto);
-
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ language: VideoLanguage.ARABIC }),
-      );
-    });
-
-    it('should default platform to NATIVE if not provided', async () => {
-      const createDto: CreateVideoDto = {
-        title: 'Test Video',
-        category: 'Technology',
-        type: VideoType.VIDEO_PODCAST,
-        duration: 3600,
-        publicationDate: '2024-01-01',
-      };
-
-      const video = createMockVideo({ platform: VideoPlatform.NATIVE });
-      mockRepository.create.mockReturnValue(video);
-      mockRepository.save.mockResolvedValue(video);
-
-      await service.create(createDto);
-
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ platform: VideoPlatform.NATIVE }),
-      );
-    });
-
-    it('should normalize tags by trimming whitespace', async () => {
-      const createDto: CreateVideoDto = {
-        title: 'Test Video',
-        category: 'Technology',
-        type: VideoType.VIDEO_PODCAST,
-        duration: 3600,
-        publicationDate: '2024-01-01',
-        tags: ['  tech  ', '  podcast  ', ''],
-      };
-
-      const video = createMockVideo({ tags: ['tech', 'podcast'] });
-      mockRepository.create.mockReturnValue(video);
-      mockRepository.save.mockResolvedValue(video);
-
-      await service.create(createDto);
-
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ tags: ['tech', 'podcast'] }),
-      );
-    });
-
-    it('should convert publicationDate string to Date', async () => {
-      const createDto: CreateVideoDto = {
-        title: 'Test Video',
-        category: 'Technology',
-        type: VideoType.VIDEO_PODCAST,
-        duration: 3600,
-        publicationDate: '2024-06-15',
-      };
-
-      const video = createMockVideo();
-      mockRepository.create.mockReturnValue(video);
-      mockRepository.save.mockResolvedValue(video);
-
-      await service.create(createDto);
-
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ publicationDate: expect.any(Date) }),
-      );
-    });
   });
 
   describe('importFromPlatform', () => {
@@ -256,6 +148,28 @@ describe('VideosService', () => {
       );
     });
 
+    it('should allow overriding description from metadata', async () => {
+      const importDto: ImportVideoDto = {
+        url: 'https://www.youtube.com/watch?v=abc123',
+        category: 'Technology',
+        type: VideoType.VIDEO_PODCAST,
+        description: 'Custom Description',
+      };
+
+      mockVideoPlatformsService.fetchMetadataFromUrl.mockResolvedValue(mockMetadata);
+      mockRepository.findOne.mockResolvedValue(null);
+
+      const importedVideo = createMockVideo({ description: 'Custom Description' });
+      mockRepository.create.mockReturnValue(importedVideo);
+      mockRepository.save.mockResolvedValue(importedVideo);
+
+      await service.importFromPlatform(importDto);
+
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ description: 'Custom Description' }),
+      );
+    });
+
     it('should merge user tags with platform tags', async () => {
       const importDto: ImportVideoDto = {
         url: 'https://www.youtube.com/watch?v=abc123',
@@ -278,6 +192,49 @@ describe('VideosService', () => {
         expect.objectContaining({
           tags: expect.arrayContaining(['custom', 'tags']),
         }),
+      );
+    });
+
+    it('should default language to Arabic if not provided', async () => {
+      const importDto: ImportVideoDto = {
+        url: 'https://www.youtube.com/watch?v=abc123',
+        category: 'Technology',
+        type: VideoType.VIDEO_PODCAST,
+      };
+
+      mockVideoPlatformsService.fetchMetadataFromUrl.mockResolvedValue(mockMetadata);
+      mockRepository.findOne.mockResolvedValue(null);
+
+      const importedVideo = createMockVideo({ language: VideoLanguage.ARABIC });
+      mockRepository.create.mockReturnValue(importedVideo);
+      mockRepository.save.mockResolvedValue(importedVideo);
+
+      await service.importFromPlatform(importDto);
+
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ language: VideoLanguage.ARABIC }),
+      );
+    });
+
+    it('should use provided language when specified', async () => {
+      const importDto: ImportVideoDto = {
+        url: 'https://www.youtube.com/watch?v=abc123',
+        category: 'Technology',
+        type: VideoType.VIDEO_PODCAST,
+        language: VideoLanguage.ENGLISH,
+      };
+
+      mockVideoPlatformsService.fetchMetadataFromUrl.mockResolvedValue(mockMetadata);
+      mockRepository.findOne.mockResolvedValue(null);
+
+      const importedVideo = createMockVideo({ language: VideoLanguage.ENGLISH });
+      mockRepository.create.mockReturnValue(importedVideo);
+      mockRepository.save.mockResolvedValue(importedVideo);
+
+      await service.importFromPlatform(importDto);
+
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ language: VideoLanguage.ENGLISH }),
       );
     });
   });

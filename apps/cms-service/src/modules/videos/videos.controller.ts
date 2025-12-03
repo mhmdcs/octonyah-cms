@@ -17,10 +17,8 @@ import {
   ApiParam,
   ApiBody,
   ApiBearerAuth,
-  ApiConsumes,
 } from '@nestjs/swagger';
 import { VideosService } from './videos.service';
-import { CreateVideoDto } from './dto/create-video.dto';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { ImportVideoDto } from './dto/import-video.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -34,17 +32,6 @@ import { Roles } from '../../auth/roles.decorator';
 @Controller('cms/videos')
 export class VideosController {
   constructor(private readonly videosService: VideosService) {}
-
-  @Post()
-  @Roles('admin', 'editor')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new video manually' })
-  @ApiBody({ type: CreateVideoDto })
-  @ApiResponse({ status: 201, description: 'Video successfully created' })
-  @ApiResponse({ status: 400, description: 'Invalid input data' })
-  create(@Body() createVideoDto: CreateVideoDto) {
-    return this.videosService.create(createVideoDto);
-  }
 
   @Post('import')
   @Roles('admin', 'editor')
@@ -112,6 +99,4 @@ export class VideosController {
   remove(@Param('id') id: string) {
     return this.videosService.remove(id);
   }
-
 }
-
