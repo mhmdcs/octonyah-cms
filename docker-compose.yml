@@ -52,6 +52,7 @@ services:
     depends_on:
       - postgres
       - rabbitmq
+      - redis
     environment:
       NODE_ENV: development
       CMS_PORT: 3000
@@ -65,6 +66,8 @@ services:
       RABBITMQ_QUEUE: video-events
       RABBITMQ_PREFETCH: 1
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     ports:
       - '3000:3000'
 

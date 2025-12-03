@@ -502,18 +502,6 @@ The project includes comprehensive test coverage with both **unit tests** and **
 
 Unit tests test individual components (services, controllers, guards, etc.) in isolation with mocked dependencies.
 
-**Run unit tests:**
-```bash
-# Run all unit tests
-npm test
-
-# Run tests in watch mode (re-runs on file changes)
-npm run test:watch
-
-# Run tests with coverage report
-npm run test:cov
-```
-
 **Test coverage includes:**
 - **CMS Service (8 tests):** Auth service, auth controller, JWT strategy, roles guard, videos service, videos controller, health controller, app controller
 - **Discovery Service (11 tests):** Discovery service, discovery controller, video search service, video index processor, queue service, cleanup processor, event listener, health indicators (Redis, Elasticsearch), app controller
@@ -549,12 +537,66 @@ npm run test:e2e
 npm test && npm run test:e2e
 ```
 
-### Test Configuration
+### Comprehensive Integration Test Script
 
-| Test Type | Config File | Test Pattern | Location |
-|-----------|-------------|--------------|----------|
-| Unit | `package.json` (jest section) | `*.spec.ts` | `test/**/*.spec.ts` |
-| E2E | `test/jest-e2e.json` | `*.e2e-spec.ts` | `test/*.e2e-spec.ts` |
+The project includes a comprehensive shell script (`comprehensive-test.sh`) that used Opus 4.5 to write it, it performs full end-to-end integration testing against the running Docker services. It script tests the entire system including YouTube API integration, database operations, Elasticsearch search, and role-based access control. It also seeds into the test 5 videos from Thmanyah's youtube channel as samples.
+
+So make sure you have the YouTube API key already set up :)
+
+**Run the comprehensive test:**
+```bash
+# Make the script executable
+chmod +x comprehensive-test.sh
+
+# Flush Redis rate limits before testing
+docker exec octonyah-redis redis-cli FLUSHALL
+
+# Run the comprehensive test
+./comprehensive-test.sh
+```
+
+**What the script tests (84 tests total):**
+
+| Section | Tests |
+|---------|-------|
+| **Infrastructure Health** | Docker containers, CMS/Discovery root endpoints, health checks (DB, Redis, Elasticsearch) |
+| **Authentication** | Admin/editor login, invalid credentials, missing fields validation, JWT token generation |
+| **YouTube Video Import** | Import 5 real YouTube videos, metadata extraction (title, description, duration, thumbnail), custom overrides, duplicate detection, unsupported platforms |
+| **Video CRUD (CMS)** | Get all videos, get by ID, update title/category/tags/type/date, validation errors, 404 handling |
+| **Discovery Search** | Full-text search, category/type/tags filters, date range, sorting (relevance/date/popular), pagination |
+| **Discovery Browse** | Get video by ID, browse by category, browse by type, pagination |
+| **Reindex Operation** | Admin can reindex, editor denied (403) |
+| **Role-Based Access** | Editor cannot delete (403), admin can delete (204), soft delete verification |
+| **Cleanup** | Automatic cleanup of test data |
+
+**Sample output:**
+```
+╔══════════════════════════════════════════════════════════════╗
+║    OCTONYAH VIDEO PLATFORM - COMPREHENSIVE API TESTING       ║
+╚══════════════════════════════════════════════════════════════╝
+
+✓ CMS and Discovery containers are running
+✓ Admin login successful
+✓ Video 1 imported successfully (ID: d060ce9d...)
+✓ Video 1 metadata correctly extracted from YouTube
+✓ Search all videos works (total: 5)
+✓ Editor correctly denied delete access (403)
+...
+
+╔══════════════════════════════════════════════════════════════╗
+║                      TEST SUMMARY                            ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Passed: 84
+  Failed: 0
+  Total:  84
+
+╔══════════════════════════════════════════════════════════════╗
+║                 ✓ ALL TESTS PASSED!                          ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+**Note:** The auth endpoint has strict rate limiting (5 requests/minute). If you encounter rate limit errors (429), flush Redis and wait before re-running: `docker exec octonyah-redis redis-cli FLUSHALL`
 
 ## API Documentation
 

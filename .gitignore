@@ -49,4 +49,3 @@ lerna-debug.log*
 *.temp
 .cursor
 /ARCHITECTURE_IMPROVEMENTS.md
-/comprehensive-test.sh
