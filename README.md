@@ -10,8 +10,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 - [Service Layout](#service-layout)
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Installation, Configuration, and Running the Application](#installation-configuration-and-running-the-application)
+- [Running](#running)
 - [Testing](#testing)
 - [API Documentation](#api-documentation)
 
@@ -412,56 +411,7 @@ Octonyah follows a **microservices architecture** layered on top of NestJS' modu
 - **ESLint** - Code linting
 - **Prettier** - Code formatting
 
-## Prerequisites
-
-- Node.js (v18.19.1 or higher recommended)
-- npm (v10.2.0 or higher)
-
-## Installation, Configuration, and Running the Application
-
-1. **Clone the repository** :
-   ```bash
-   git clone git@github.com:mhmdcs/octonyah-cms.git
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**:
-   ```bash
-   cp .env.example .env
-   ```
-   
-   The `.env` file contains:
-   ```env
-   PORT=3000
-   DB_TYPE=postgres
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_USERNAME=postgres
-   DB_PASSWORD=postgres
-   DB_DATABASE=octonyah
-   NODE_ENV=development
-   ```
-
-The application uses environment variables for configuration. Edit the `.env` file to customize:
-
-- `CMS_PORT` / `DISCOVERY_PORT` - Default ports for each microservice
-- `DB_HOST` / `DB_PORT` - PostgreSQL host and port
-- `DB_USERNAME` / `DB_PASSWORD` - PostgreSQL credentials
-- `DB_DATABASE` - PostgreSQL database name (default: octonyah)
-- `RABBITMQ_URL` - Connection string for RabbitMQ (e.g., `amqp://guest:guest@localhost:5672`)
-- `RABBITMQ_QUEUE` - Queue name for video events (default: `video-events`)
-- `RABBITMQ_PREFETCH` - Prefetch count for consumers (default: `1`)
-- `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` - Redis connection settings (host defaults to `localhost`)
-- `REDIS_TTL_SECONDS` - TTL for cached items (default: `300`)
-- `ELASTICSEARCH_NODE` - Elasticsearch node URL (default: `http://localhost:9200`)
-- `ELASTICSEARCH_USERNAME` / `ELASTICSEARCH_PASSWORD` - Optional basic auth credentials
-- `ELASTICSEARCH_INDEX` - Index name for videos (default: `videos`)
-- `YOUTUBE_API_KEY` - YouTube Data API v3 key (required for importing YouTube videos, see below)
-- `NODE_ENV` - Environment mode (development/production)
+## Running
 
 #### Getting a YouTube API Key
 
@@ -474,9 +424,9 @@ To enable YouTube video importing, you need a YouTube Data API v3 key:
 5. Go to **APIs & Services** → **Credentials**
 6. Click **Create Credentials** → **API key**
 7. (Optional) Restrict the key to YouTube Data API v3 for security
-8. Copy the key and set it as `YOUTUBE_API_KEY` environment variable
+8. Copy the key and set it as `YOUTUBE_API_KEY` environment variable in .env
 
-### Docker Compose (All services)
+### Docker Compose (Running all services)
 
 Run the entire stack (Postgres + both microservices) with a single command:
 
@@ -573,10 +523,10 @@ Swagger UI provides:
 - `GET /` - Hello World endpoint for testing
 - `POST /cms/videos` - Create a new video manually
 - `POST /cms/videos/import` - **Import a video from external platform** (YouTube, etc.)
-- `GET /cms/videos` - Get all videos (automatically excludes soft-deleted videos)
-- `GET /cms/videos/:id` - Get a video by ID (returns 404 if soft-deleted)
+- `GET /cms/videos` - Get all videos
+- `GET /cms/videos/:id` - Get a video by ID
 - `PATCH /cms/videos/:id` - Update a video
-- `DELETE /cms/videos/:id` - Soft delete a video (marks with `deletedAt` timestamp, removes from cache and search index)
+- `DELETE /cms/videos/:id` - Soft delete a video
 
 #### Discovery service (public)
 - Base URL: `http://localhost:${DISCOVERY_PORT}` (default `http://localhost:3001`)
@@ -585,37 +535,13 @@ Swagger UI provides:
 - `GET /discovery/videos/:id` - Get a video by ID (public)
 - `GET /discovery/categories/:category` - Get videos by category
 - `GET /discovery/types/:type` - Get videos by type
-- `POST /discovery/search/reindex` - Enqueue a BullMQ job to rebuild the Elasticsearch index (internal use)
+- `POST /discovery/search/reindex` - Enqueue a BullMQ job to rebuild the Elasticsearch index
 
 #### Health Check Endpoints
 Both services expose health check endpoints for monitoring and orchestration:
 
 - **CMS Service**: `GET /health` - Checks database connectivity
 - **Discovery Service**: `GET /health` - Checks database, Redis, and Elasticsearch connectivity
-
-Health check responses follow the standard format:
-```json
-{
-  "status": "ok",
-  "info": {
-    "database": { "status": "up" },
-    "redis": { "status": "up" },
-    "elasticsearch": { "status": "up" }
-  },
-  "error": {},
-  "details": {
-    "database": { "status": "up" },
-    "redis": { "status": "up" },
-    "elasticsearch": { "status": "up" }
-  }
-}
-```
-
-If any dependency is down, the `status` will be `"error"` and the failing service will appear in the `error` object with details about the failure. These endpoints are useful for:
-- Load balancer health checks
-- Kubernetes liveness/readiness probes
-- Monitoring and alerting systems
-- Container orchestration platforms
 
 ##### Search query parameters (`GET /discovery/search`)
 - `q` – Free-text query (title, description, tags) with fuzzy matching
@@ -624,20 +550,6 @@ If any dependency is down, the `status` will be `"error"` and the failing servic
 - `startDate` / `endDate` – Filter by publication date range (ISO strings)
 - `sort` – `relevance` (default), `date` (newest first), or `popular`
 - `page` / `limit` – Pagination controls (limit capped at 100)
-
-### Health Check Examples
-
-**Check CMS service health:**
-```bash
-curl http://localhost:3000/health
-```
-
-**Check Discovery service health:**
-```bash
-curl http://localhost:3001/health
-```
-
-The health endpoints return HTTP 200 when all dependencies are healthy, and HTTP 503 when any dependency is down.
 
 ### Example API Calls
 
