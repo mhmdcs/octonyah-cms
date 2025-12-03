@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Video, VideoType, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
+import { Video, VideoType, VideoPlatform } from '@octonyah/shared-videos';
 import { AppModule } from '../apps/discovery-service/src/app.module';
 import { RedisCacheService } from '@octonyah/shared-cache';
 import { VideoSearchService } from '../apps/discovery-service/src/search/video-search.service';
@@ -24,10 +24,8 @@ describe('Discovery Service (e2e)', () => {
     description: 'Test Description',
     category: 'Technology',
     type: VideoType.VIDEO_PODCAST,
-    language: VideoLanguage.ARABIC,
     duration: 3600,
     tags: ['tech', 'podcast'],
-    popularityScore: 10,
     publicationDate: new Date('2024-01-01'),
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -167,19 +165,6 @@ describe('Discovery Service (e2e)', () => {
 
         expect(mockVideoSearchService.search).toHaveBeenCalledWith(
           expect.objectContaining({ type: VideoType.VIDEO_PODCAST }),
-        );
-      });
-
-      it('should filter by language', async () => {
-        mockVideoSearchService.search.mockResolvedValue(mockSearchResponse);
-
-        await request(app.getHttpServer())
-          .get('/discovery/search')
-          .query({ language: VideoLanguage.ARABIC })
-          .expect(200);
-
-        expect(mockVideoSearchService.search).toHaveBeenCalledWith(
-          expect.objectContaining({ language: VideoLanguage.ARABIC }),
         );
       });
 

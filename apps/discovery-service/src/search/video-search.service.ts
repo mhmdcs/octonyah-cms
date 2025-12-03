@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import {
   Video,
-  VideoLanguage,
   VideoType,
   VideoPlatform,
 } from '@octonyah/shared-videos';
@@ -44,10 +43,8 @@ export class VideoSearchService implements OnModuleInit {
             description: { type: 'text' },
             category: { type: 'keyword' },
             type: { type: 'keyword' },
-            language: { type: 'keyword' },
             tags: { type: 'keyword' },
             duration: { type: 'integer' },
-            popularityScore: { type: 'integer' },
             publicationDate: { type: 'date' },
             createdAt: { type: 'date' },
             updatedAt: { type: 'date' },
@@ -86,11 +83,10 @@ export class VideoSearchService implements OnModuleInit {
     return [{ multi_match: { query: q, fields: ['title^3', 'description', 'tags'], type: 'best_fields', fuzziness: 'AUTO' } }];
   }
 
-  private buildFilterClause({ category, type, language, tags, startDate, endDate }: SearchVideosDto): any[] {
+  private buildFilterClause({ category, type, tags, startDate, endDate }: SearchVideosDto): any[] {
     const filter: any[] = [];
     if (category) filter.push({ term: { category } });
     if (type) filter.push({ term: { type } });
-    if (language) filter.push({ term: { language } });
     if (tags?.length) filter.push({ terms: { tags } });
     if (startDate || endDate) {
       const range: Record<string, string> = {};
@@ -135,10 +131,8 @@ export class VideoSearchService implements OnModuleInit {
       description: video.description,
       category: video.category ?? '',
       type: video.type ?? VideoType.VIDEO_PODCAST,
-      language: video.language ?? VideoLanguage.ARABIC,
       tags: video.tags ?? [],
       duration: video.duration ?? 0,
-      popularityScore: video.popularityScore ?? 0,
       publicationDate:
         this.toIso(video.publicationDate) ?? new Date().toISOString(),
       createdAt: this.toIso(video.createdAt),
@@ -158,8 +152,8 @@ export class VideoSearchService implements OnModuleInit {
     if (!doc) return null;
     return {
       id: doc.id, title: doc.title, description: doc.description ?? null,
-      category: doc.category, type: doc.type, language: doc.language,
-      tags: doc.tags ?? [], duration: doc.duration, popularityScore: doc.popularityScore ?? 0,
+      category: doc.category, type: doc.type,
+      tags: doc.tags ?? [], duration: doc.duration,
       publicationDate: doc.publicationDate ? new Date(doc.publicationDate) : undefined,
       createdAt: doc.createdAt ? new Date(doc.createdAt) : undefined,
       updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : undefined,
@@ -176,7 +170,7 @@ export class VideoSearchService implements OnModuleInit {
   private buildSort(sort?: string) {
     const sortMap: Record<string, string[]> = {
       date: ['publicationDate:desc'],
-      popular: ['popularityScore:desc'],
+      popular: ['publicationDate:desc'], // fallback to date sorting
     };
     return sort ? sortMap[sort] : undefined;
   }

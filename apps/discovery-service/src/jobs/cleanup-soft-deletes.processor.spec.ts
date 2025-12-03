@@ -30,7 +30,7 @@ jest.mock('../search/video-search.service', () => ({
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Job } from 'bullmq';
-import { Video, VideoType, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
+import { Video, VideoType, VideoPlatform } from '@octonyah/shared-videos';
 import { CLEANUP_SOFT_DELETES_JOB } from './cleanup-soft-deletes.queue';
 import { CleanupSoftDeletesProcessor } from './cleanup-soft-deletes.processor';
 import { VideoSearchService } from '../search/video-search.service';
@@ -62,10 +62,8 @@ describe('CleanupSoftDeletesProcessor', () => {
     description: 'Test Description',
     category: 'Technology',
     type: VideoType.VIDEO_PODCAST,
-    language: VideoLanguage.ARABIC,
     duration: 3600,
     tags: ['tech', 'podcast'],
-    popularityScore: 10,
     publicationDate: new Date('2024-01-01'),
     createdAt: new Date(),
     updatedAt: new Date(),

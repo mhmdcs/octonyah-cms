@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { VideoType, VideoLanguage } from '@octonyah/shared-videos';
+import { VideoType } from '@octonyah/shared-videos';
 
 export class SearchVideosDto {
   // Text search query - searches in title and description.
@@ -42,16 +42,6 @@ export class SearchVideosDto {
   @IsOptional()
   @IsEnum(VideoType)
   type?: VideoType;
-
-  // Filter by video language (ar or en) if not provided, includes all languages
-  @ApiPropertyOptional({
-    description: 'Filter by language',
-    enum: VideoLanguage,
-    example: VideoLanguage.ARABIC,
-  })
-  @IsOptional()
-  @IsEnum(VideoLanguage)
-  language?: VideoLanguage;
 
   @ApiPropertyOptional({
     description: 'Filter by tags. Provide multiple tags by repeating the query param.',

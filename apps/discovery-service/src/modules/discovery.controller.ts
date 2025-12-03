@@ -27,7 +27,7 @@ export class DiscoveryController {
   @ApiOperation({
     summary: 'Search videos',
     description:
-      'Search and filter videos by text, category, type, language with pagination support',
+      'Search and filter videos by text, category, type with pagination support',
   })
   @ApiResponse({
     status: 200,

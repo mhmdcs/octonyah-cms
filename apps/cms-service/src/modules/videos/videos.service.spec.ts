@@ -4,7 +4,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Video, VideoType, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
+import { Video, VideoType, VideoPlatform } from '@octonyah/shared-videos';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { VideosService } from './videos.service';
 import { VideoEventsPublisher } from '@octonyah/shared-events';
@@ -43,10 +43,8 @@ describe('VideosService', () => {
     description: 'Test Description',
     category: 'Technology',
     type: VideoType.VIDEO_PODCAST,
-    language: VideoLanguage.ARABIC,
     duration: 3600,
     tags: ['tech', 'podcast'],
-    popularityScore: 10,
     publicationDate: new Date('2024-01-01'),
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -196,48 +194,6 @@ describe('VideosService', () => {
       );
     });
 
-    it('should default language to Arabic if not provided', async () => {
-      const importDto: ImportVideoDto = {
-        url: 'https://www.youtube.com/watch?v=abc123',
-        category: 'Technology',
-        type: VideoType.VIDEO_PODCAST,
-      };
-
-      mockVideoPlatformsService.fetchMetadataFromUrl.mockResolvedValue(mockMetadata);
-      mockRepository.findOne.mockResolvedValue(null);
-
-      const importedVideo = createMockVideo({ language: VideoLanguage.ARABIC });
-      mockRepository.create.mockReturnValue(importedVideo);
-      mockRepository.save.mockResolvedValue(importedVideo);
-
-      await service.importFromPlatform(importDto);
-
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ language: VideoLanguage.ARABIC }),
-      );
-    });
-
-    it('should use provided language when specified', async () => {
-      const importDto: ImportVideoDto = {
-        url: 'https://www.youtube.com/watch?v=abc123',
-        category: 'Technology',
-        type: VideoType.VIDEO_PODCAST,
-        language: VideoLanguage.ENGLISH,
-      };
-
-      mockVideoPlatformsService.fetchMetadataFromUrl.mockResolvedValue(mockMetadata);
-      mockRepository.findOne.mockResolvedValue(null);
-
-      const importedVideo = createMockVideo({ language: VideoLanguage.ENGLISH });
-      mockRepository.create.mockReturnValue(importedVideo);
-      mockRepository.save.mockResolvedValue(importedVideo);
-
-      await service.importFromPlatform(importDto);
-
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ language: VideoLanguage.ENGLISH }),
-      );
-    });
   });
 
   describe('findAll', () => {

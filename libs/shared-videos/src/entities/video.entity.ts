@@ -12,11 +12,6 @@ export enum VideoType {
   DOCUMENTARY = 'documentary',
 }
 
-export enum VideoLanguage {
-  ARABIC = 'ar',
-  ENGLISH = 'en',
-}
-
 /**
  * Represents the source platform of a video.
  * NATIVE = uploaded directly to our platform
@@ -47,17 +42,9 @@ export class Video {
   @Column({ type: 'varchar', length: 50 })
   type: VideoType;
 
-  // defaults to arabic? maybe rethink this later
-  @Column({ type: 'varchar', length: 10, default: VideoLanguage.ARABIC })
-  language: VideoLanguage;
-
   // tags/keywords for search and filtering
   @Column({ type: 'simple-array', nullable: true })
   tags?: string[];
-
-  // Popularity score used for ranking (views, likes, etc)
-  @Column({ type: 'integer', default: 0 })
-  popularityScore: number;
 
   @Column({ type: 'integer' })
   duration: number; // in seconds
@@ -71,17 +58,9 @@ export class Video {
   @Column({ type: 'varchar', length: 500, nullable: true })
   thumbnailUrl?: string;
 
-  /**
-   * Source platform of the video (native, youtube, etc.)
-   * Defaults to NATIVE for directly uploaded videos
-   */
   @Column({ type: 'varchar', length: 50, default: VideoPlatform.NATIVE })
   platform: VideoPlatform;
 
-  /**
-   * Video ID on the external platform (e.g., YouTube video ID)
-   * Null for native uploads
-   */
   @Column({ type: 'varchar', length: 100, nullable: true })
   platformVideoId?: string;
 
@@ -92,12 +71,9 @@ export class Video {
   @Column({ type: 'varchar', length: 500, nullable: true })
   embedUrl?: string;
 
-
-  // Auto set timestamp thru TypeORM
   @CreateDateColumn()
   createdAt: Date;
 
-  // Auto update timestamp thru TypeORM
   @UpdateDateColumn()
   updatedAt: Date;
 

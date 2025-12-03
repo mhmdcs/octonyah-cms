@@ -43,7 +43,7 @@ export class VideoEventsPublisher extends EventPublisherService {
   private sanitizeVideo(video: Partial<Video>) {
     const { publicationDate, createdAt, updatedAt, ...rest } = video;
     return {
-      ...rest, tags: video.tags ?? [], popularityScore: video.popularityScore ?? 0,
+      ...rest, tags: video.tags ?? [],
       publicationDate: this.sanitizeDate(publicationDate),
       createdAt: this.sanitizeDate(createdAt), updatedAt: this.sanitizeDate(updatedAt),
     };

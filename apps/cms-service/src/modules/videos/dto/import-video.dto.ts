@@ -4,11 +4,9 @@ import {
   IsEnum,
   IsOptional,
   IsArray,
-  IsInt,
-  Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { VideoType, VideoLanguage } from '@octonyah/shared-videos';
+import { VideoType } from '@octonyah/shared-videos';
 
 /**
  * DTO for importing a video from an external platform (e.g., YouTube).
@@ -57,15 +55,6 @@ export class ImportVideoDto {
   description?: string;
 
   @ApiPropertyOptional({
-    description: 'Language of the video content',
-    enum: VideoLanguage,
-    example: VideoLanguage.ARABIC,
-  })
-  @IsOptional()
-  @IsEnum(VideoLanguage)
-  language?: VideoLanguage;
-
-  @ApiPropertyOptional({
     description: 'Additional tags for search and filtering (merged with platform tags)',
     example: ['podcast', 'interview', 'tech'],
   })
@@ -73,15 +62,5 @@ export class ImportVideoDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
-
-  @ApiPropertyOptional({
-    description: 'Initial popularity score',
-    example: 0,
-    default: 0,
-  })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  popularityScore?: number;
 }
 

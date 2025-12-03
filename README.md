@@ -28,7 +28,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
   - Duplicate detection to prevent re-importing the same video
   - Platform-specific fields (embedUrl, platformVideoId)
   - Optional custom thumbnail uploads for editors
-- Metadata management (title, description, category, language, duration, publication date)
+- Metadata management (title, description, category, duration, publication date)
 - Input validation and error handling
 - RESTful API endpoints for frontend integration
 - Swagger documentation
@@ -39,7 +39,7 @@ Octonyah (totally unrelated to any \*\*\*\*nyah similar sounding cms products!) 
 ### Discovery System
 - Public API endpoints for searching videos and content
 - Search interface with full text search
-- Filtering by category, type, and language
+- Filtering by category and type
 - Pagination support
 - Browse videos by category or type
 - Redis-backed cache with automatic invalidation via RabbitMQ events
@@ -544,7 +544,7 @@ Both services expose health check endpoints for monitoring and orchestration:
 
 ##### Search query parameters (`GET /discovery/search`)
 - `q` – Free-text query (title, description, tags) with fuzzy matching
-- `category`, `type`, `language` – Exact-match filters
+- `category`, `type` – Exact-match filters
 - `tags` – Repeatable query param for multi-tag filtering (`?tags=tech&tags=history`)
 - `startDate` / `endDate` – Filter by publication date range (ISO strings)
 - `sort` – `relevance` (default), `date` (newest first), or `popular`
@@ -578,9 +578,7 @@ The import endpoint:
 Optional fields for overriding extracted metadata:
 - `title` - Override the YouTube video title
 - `description` - Override the YouTube video description
-- `language` - Set the language (defaults to Arabic)
 - `tags` - Additional tags (merged with YouTube tags)
-- `popularityScore` - Initial popularity score
 
 Supported YouTube URL formats:
 - `https://www.youtube.com/watch?v=VIDEO_ID`

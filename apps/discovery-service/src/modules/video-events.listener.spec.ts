@@ -3,7 +3,7 @@ import { RmqContext } from '@nestjs/microservices';
 import { VideoEventsListener } from './video-events.listener';
 import { RedisCacheService } from '@octonyah/shared-cache';
 import { VideoIndexQueueService } from '../jobs/video-index.queue.service';
-import { Video, VideoType, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
+import { Video, VideoType, VideoPlatform } from '@octonyah/shared-videos';
 
 describe('VideoEventsListener', () => {
   let listener: VideoEventsListener;
@@ -41,10 +41,8 @@ describe('VideoEventsListener', () => {
     description: 'Test Description',
     category: 'Technology',
     type: VideoType.VIDEO_PODCAST,
-    language: VideoLanguage.ARABIC,
     duration: 3600,
     tags: ['tech', 'podcast'],
-    popularityScore: 10,
     platform: VideoPlatform.NATIVE,
     ...overrides,
   });

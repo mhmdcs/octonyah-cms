@@ -27,7 +27,7 @@ jest.mock('../search/video-search.service', () => ({
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { Video, VideoType, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
+import { Video, VideoType, VideoPlatform } from '@octonyah/shared-videos';
 import { SearchVideosDto } from './dto/search-videos.dto';
 import { SearchResponseDto } from './dto/search-response.dto';
 import { DiscoveryController } from './discovery.controller';
@@ -50,10 +50,8 @@ describe('DiscoveryController', () => {
     description: 'Test Description',
     category: 'Technology',
     type: VideoType.VIDEO_PODCAST,
-    language: VideoLanguage.ARABIC,
     duration: 3600,
     tags: ['tech', 'podcast'],
-    popularityScore: 10,
     publicationDate: new Date('2024-01-01'),
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -107,7 +105,6 @@ describe('DiscoveryController', () => {
         q: 'test',
         category: 'Technology',
         type: VideoType.VIDEO_PODCAST,
-        language: VideoLanguage.ARABIC,
         page: 1,
         limit: 10,
       };

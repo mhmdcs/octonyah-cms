@@ -25,7 +25,7 @@ jest.mock('@nestjs/elasticsearch', () => ({
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { VideoType, VideoLanguage, VideoPlatform, Video } from '@octonyah/shared-videos';
+import { VideoType, VideoPlatform, Video } from '@octonyah/shared-videos';
 import { VideoSearchService } from './video-search.service';
 import { SearchVideosDto } from '../modules/dto/search-videos.dto';
 
@@ -58,10 +58,8 @@ describe('VideoSearchService', () => {
     description: 'Test Description',
     category: 'Technology',
     type: VideoType.VIDEO_PODCAST,
-    language: VideoLanguage.ARABIC,
     duration: 3600,
     tags: ['tech', 'podcast'],
-    popularityScore: 10,
     publicationDate: new Date('2024-01-01'),
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -133,10 +131,8 @@ describe('VideoSearchService', () => {
                 description: 'Test Description',
                 category: 'Technology',
                 type: VideoType.VIDEO_PODCAST,
-                language: VideoLanguage.ARABIC,
                 duration: 3600,
                 tags: ['tech'],
-                popularityScore: 10,
                 publicationDate: '2024-01-01T00:00:00.000Z',
                 platform: VideoPlatform.NATIVE,
               },
@@ -187,7 +183,6 @@ describe('VideoSearchService', () => {
       const searchDto: SearchVideosDto = {
         category: 'Technology',
         type: VideoType.VIDEO_PODCAST,
-        language: VideoLanguage.ARABIC,
         page: 1,
         limit: 20,
       };
@@ -205,7 +200,6 @@ describe('VideoSearchService', () => {
               filter: expect.arrayContaining([
                 { term: { category: 'Technology' } },
                 { term: { type: VideoType.VIDEO_PODCAST } },
-                { term: { language: VideoLanguage.ARABIC } },
               ]),
             }),
           }),

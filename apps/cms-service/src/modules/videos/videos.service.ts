@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Logger, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Video, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
+import { Video, VideoPlatform } from '@octonyah/shared-videos';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { ImportVideoDto } from './dto/import-video.dto';
 import { VideoEventsPublisher } from '@octonyah/shared-events';
@@ -41,10 +41,8 @@ export class VideosService {
       description: dto.description || metadata.description,
       category: dto.category,
       type: dto.type,
-      language: dto.language || VideoLanguage.ARABIC,
       duration: metadata.durationSeconds,
       tags: this.mergeTags(metadata.tags, dto.tags),
-      popularityScore: dto.popularityScore ?? 0,
       publicationDate: metadata.publishedAt,
       videoUrl: metadata.originalUrl,
       thumbnailUrl: metadata.thumbnailUrl,

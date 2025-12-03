@@ -31,7 +31,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Job } from 'bullmq';
-import { Video, VideoType, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
+import { Video, VideoType, VideoPlatform } from '@octonyah/shared-videos';
 import { INDEX_VIDEO_JOB, REINDEX_ALL_JOB, REMOVE_VIDEO_JOB } from './video-index.queue';
 import { VideoIndexProcessor } from './video-index.processor';
 import { VideoSearchService } from '../search/video-search.service';
@@ -57,10 +57,8 @@ describe('VideoIndexProcessor', () => {
     description: 'Test Description',
     category: 'Technology',
     type: VideoType.VIDEO_PODCAST,
-    language: VideoLanguage.ARABIC,
     duration: 3600,
     tags: ['tech', 'podcast'],
-    popularityScore: 10,
     publicationDate: new Date('2024-01-01'),
     createdAt: new Date(),
     updatedAt: new Date(),

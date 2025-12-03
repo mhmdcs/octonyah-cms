@@ -45,9 +45,9 @@ export class DiscoveryService {
   }
 
   private buildSearchCacheKey(params: SearchVideosDto) {
-    const { q, category, type, language, tags, sort, startDate, endDate, page, limit } = params;
+    const { q, category, type, tags, sort, startDate, endDate, page, limit } = params;
     const parts = [
-      q?.trim() ?? '', category?.trim() ?? '', type ?? '', language ?? '',
+      q?.trim() ?? '', category?.trim() ?? '', type ?? '',
       (tags ? [...tags].sort() : []).join(','), sort ?? '',
       startDate ?? '', endDate ?? '', page, limit,
     ];

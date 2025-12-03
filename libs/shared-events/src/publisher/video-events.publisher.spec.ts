@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ClientProxy } from '@nestjs/microservices';
 import { of } from 'rxjs';
 import { VideoEventsPublisher, VIDEO_EVENTS_CLIENT } from './video-events.publisher';
-import { Video, VideoType, VideoLanguage, VideoPlatform, VideoEventPattern } from '@octonyah/shared-videos';
+import { Video, VideoType, VideoPlatform, VideoEventPattern } from '@octonyah/shared-videos';
 
 describe('VideoEventsPublisher', () => {
   let publisher: VideoEventsPublisher;
@@ -14,10 +14,8 @@ describe('VideoEventsPublisher', () => {
     description: 'Test Description',
     category: 'Technology',
     type: VideoType.VIDEO_PODCAST,
-    language: VideoLanguage.ARABIC,
     duration: 3600,
     tags: ['tech', 'podcast'],
-    popularityScore: 10,
     publicationDate: new Date('2024-01-01'),
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
@@ -96,20 +94,6 @@ describe('VideoEventsPublisher', () => {
       );
     });
 
-    it('should default popularityScore to 0', () => {
-      const video = createMockVideo({ popularityScore: undefined });
-
-      publisher.videoCreated(video);
-
-      expect(mockClient.emit).toHaveBeenCalledWith(
-        VideoEventPattern.VideoCreated,
-        expect.objectContaining({
-          video: expect.objectContaining({
-            popularityScore: 0,
-          }),
-        }),
-      );
-    });
   });
 
   describe('videoUpdated', () => {

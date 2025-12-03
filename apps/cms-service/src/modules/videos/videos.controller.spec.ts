@@ -3,7 +3,7 @@ import { VideosController } from './videos.controller';
 import { VideosService } from './videos.service';
 import { UpdateVideoDto } from './dto/update-video.dto';
 import { ImportVideoDto } from './dto/import-video.dto';
-import { Video, VideoType, VideoLanguage, VideoPlatform } from '@octonyah/shared-videos';
+import { Video, VideoType, VideoPlatform } from '@octonyah/shared-videos';
 
 describe('VideosController', () => {
   let controller: VideosController;
@@ -15,10 +15,8 @@ describe('VideosController', () => {
     description: 'Test Description',
     category: 'Technology',
     type: VideoType.VIDEO_PODCAST,
-    language: VideoLanguage.ARABIC,
     duration: 3600,
     tags: ['tech', 'podcast'],
-    popularityScore: 10,
     publicationDate: new Date('2024-01-01'),
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -81,7 +79,6 @@ describe('VideosController', () => {
         type: VideoType.VIDEO_PODCAST,
         title: 'Custom Title',
         description: 'Custom Description',
-        language: VideoLanguage.ENGLISH,
         tags: ['custom', 'tags'],
       };
 
@@ -89,7 +86,6 @@ describe('VideosController', () => {
         ...mockVideo,
         title: 'Custom Title',
         description: 'Custom Description',
-        language: VideoLanguage.ENGLISH,
         platform: VideoPlatform.YOUTUBE,
         platformVideoId: 'dQw4w9WgXcQ',
       };
@@ -152,15 +148,15 @@ describe('VideosController', () => {
 
     it('should handle partial updates', async () => {
       const updateDto: UpdateVideoDto = {
-        popularityScore: 100,
+        category: 'Science',
       };
 
-      const updatedVideo = { ...mockVideo, popularityScore: 100 };
+      const updatedVideo = { ...mockVideo, category: 'Science' };
       mockVideosService.update.mockResolvedValue(updatedVideo);
 
       const result = await controller.update('test-uuid-1', updateDto);
 
-      expect(result.popularityScore).toBe(100);
+      expect(result.category).toBe('Science');
     });
   });
 
